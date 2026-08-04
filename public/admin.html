@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel administrativo - Volcan de Agua</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-volcan">
+    <div class="container">
+      <a class="navbar-brand" href="index.html">Volcan de Agua &middot; Panel administrativo</a>
+      <button class="btn btn-outline-light btn-sm d-none" id="btnCerrarSesion">Cerrar sesion</button>
+    </div>
+  </nav>
+
+  <!-- Pantalla de login -->
+  <div id="pantallaLogin" class="container my-5" style="max-width: 420px;">
+    <div class="card p-4 shadow-sm">
+      <h4 class="mb-3">Acceso administrativo</h4>
+      <div class="mb-3">
+        <label class="form-label">Contrasena</label>
+        <input type="password" class="form-control" id="inputPassword">
+      </div>
+      <div id="errorLogin" class="alert alert-danger d-none py-2"></div>
+      <button class="btn btn-volcan" id="btnLogin">Ingresar</button>
+    </div>
+  </div>
+
+  <!-- Panel principal (oculto hasta iniciar sesion) -->
+  <main class="container my-4 d-none" id="panelPrincipal">
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <div class="fs-3 fw-bold" id="contadorActivos">0</div>
+          <div class="text-muted">Excursionistas activos</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card p-3 text-center">
+          <div class="fs-3 fw-bold text-danger" id="contadorAlertas">0</div>
+          <div class="text-muted">Alertas sin atender</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="text-muted small">Actualizacion automatica cada 15 segundos.</div>
+          <button class="btn btn-sm btn-outline-secondary mt-2" id="btnActualizar">Actualizar ahora</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-7">
+        <h5>Mapa de excursionistas activos</h5>
+        <div id="mapa-admin"></div>
+      </div>
+
+      <div class="col-lg-5">
+        <h5>Alertas</h5>
+        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Excursionista</th>
+                <th>Nivel</th>
+                <th>Detalle</th>
+                <th>Hora</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaAlertas">
+              <tr><td colspan="5" class="text-muted text-center">Sin alertas por el momento.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-4">
+
+    <h5>Excursionistas</h5>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Telefono</th>
+            <th>Contacto de emergencia</th>
+            <th>Personas</th>
+            <th>Estado</th>
+            <th>Ultima ubicacion</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tablaExcursionistas">
+          <tr><td colspan="6" class="text-muted text-center">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+/* public/css/style.css
+   Estilos compartidos. Se apoya en Bootstrap (CDN) para la estructura y aqui
+   solo se ajustan colores, tipografia y detalles propios del sistema. */
+
+:root {
+  --verde-volcan: #2f5233;
+  --verde-volcan-oscuro: #203823;
+  --tierra: #8a6d3b;
+  --crema: #f6f3ec;
+  --alerta-grave: #b3261e;
+  --alerta-moderada: #c77b17;
+  --alerta-leve: #7a8b3f;
+}
+
+body {
+  background-color: var(--crema);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #222;
+}
+
+.navbar-volcan {
+  background-color: var(--verde-volcan);
+}
+
+.navbar-volcan .navbar-brand,
+.navbar-volcan .nav-link {
+  color: #f6f3ec !important;
+  font-weight: 500;
+}
+
+.navbar-volcan .nav-link:hover {
+  color: #ffffff !important;
+}
+
+.btn-volcan {
+  background-color: var(--verde-volcan);
+  border-color: var(--verde-volcan);
+  color: #fff;
+}
+.btn-volcan:hover {
+  background-color: var(--verde-volcan-oscuro);
+  border-color: var(--verde-volcan-oscuro);
+  color: #fff;
+}
+
+.btn-panico {
+  background-color: var(--alerta-grave);
+  border-color: var(--alerta-grave);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.btn-panico:hover {
+  background-color: #8f1e18;
+  border-color: #8f1e18;
+  color: #fff;
+}
+
+.hero-volcan {
+  background: linear-gradient(180deg, rgba(47,82,51,0.92), rgba(47,82,51,0.75)),
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300"><polygon points="0,300 250,60 400,180 550,20 800,300" fill="%23203823"/></svg>');
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  padding: 4rem 1rem;
+  border-radius: 0 0 1rem 1rem;
+}
+
+.card-estado-activo {
+  border-left: 5px solid var(--verde-volcan);
+}
+.card-estado-finalizado {
+  border-left: 5px solid #999;
+  opacity: 0.75;
+}
+
+.badge-nivel-grave {
+  background-color: var(--alerta-grave);
+}
+.badge-nivel-moderada {
+  background-color: var(--alerta-moderada);
+}
+.badge-nivel-leve {
+  background-color: var(--alerta-leve);
+}
+
+#mapa, #mapa-admin {
+  width: 100%;
+  height: 420px;
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+}
+
+.alerta-fila-no-atendida {
+  background-color: #fdecea;
+}
+
+.footer-volcan {
+  color: #6b6b6b;
+  font-size: 0.85rem;
+  padding: 2rem 0 1rem;
+}
