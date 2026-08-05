@@ -167,10 +167,13 @@ async function cargarAlertas() {
       const fila = document.createElement('tr');
       if (!a.atendida) fila.classList.add('alerta-fila-no-atendida');
       const hora = new Date(a.timestamp).toLocaleTimeString('es-GT');
+      const contadorOcurrencias = a.ocurrencias > 1
+        ? ` <span class="chip">×${a.ocurrencias}</span>`
+        : '';
       fila.innerHTML = `
         <td>${escaparHtml(a.excursionistaNombre || '-')}</td>
         <td><span class="badge badge-nivel-${a.nivel}">${a.nivel}</span></td>
-        <td>${escaparHtml(a.mensaje || '-')}</td>
+        <td>${escaparHtml(a.mensaje || '-')}${contadorOcurrencias}</td>
         <td>${hora}</td>
         <td>
           ${a.atendida

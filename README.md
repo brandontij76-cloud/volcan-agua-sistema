@@ -125,7 +125,42 @@ activo. Si necesitas que se ejecute aunque el servidor este apagado (por
 ejemplo en un hosting con "cron jobs" o "scheduled functions"), esa logica
 se puede migrar a una Cloud Function programada de Firebase mas adelante.
 
-## 8. Puntos para seguir desarrollando
+## 9. Asistente inteligente (clima + recomendaciones + aprendizaje)
+
+`services/asistenteIA.js` combina tres fuentes reales de informacion:
+
+1. **Clima real**: consulta la API gratuita de Open-Meteo (sin llave) para la
+   fecha/hora de salida que indique el excursionista. Si no hay conexion,
+   usa reglas estacionales de Guatemala (seca: nov-abr, lluviosa: may-oct)
+   como respaldo, sin que el sistema falle.
+2. **Motor de reglas de equipo**: cruza clima + hora de salida para sugerir
+   que llevar (agua, impermeable, linterna, protector solar, etc.)
+3. **Aprendizaje de datos historicos**: analiza los excursionistas y alertas
+   ya guardados en Firebase para calcular, por franja horaria de salida, que
+   porcentaje ha tenido alguna alerta. Mientras mas gente se registre, mas
+   preciso se vuelve este calculo (requiere al menos 5 registros en la misma
+   franja horaria para mostrarse, evitando conclusiones con pocos datos).
+
+Se muestra automaticamente en `registro.html` cuando la persona elige su
+hora de salida, antes de enviar el formulario.
+
+## 10. Temas segun hora del dia
+
+`public/js/tema.js` aplica un tema visual distinto segun la hora local del
+dispositivo (dia 6:00-12:59 claro, tarde 13:00-18:59 calido, noche
+19:00-5:59 oscuro). Los colores de cada tema estan en `public/css/style.css`
+bajo los selectores `:root[data-theme="dia"]`, `[data-theme="tarde"]` y
+`[data-theme="noche"]`.
+
+## 11. Alertas sin duplicados
+
+`services/gestionAlertas.js` evita que el panel administrativo se llene de
+filas repetidas: mientras una alerta de una persona siga sin atender, las
+nuevas detecciones actualizan esa misma fila (y suman un contador de
+"ocurrencias") en vez de crear una nueva. Al atenderla, la siguiente
+deteccion si genera una fila nueva (es un incidente distinto).
+
+## 12. Puntos para seguir desarrollando
 
 - **Ruta de referencia real:** las coordenadas del sendero en
   `services/deteccionAnomalias.js` (`RUTA_REFERENCIA_VOLCAN_DE_AGUA`) son

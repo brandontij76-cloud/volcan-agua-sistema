@@ -8,6 +8,7 @@ const path = require('path');
 
 const excursionistasRoutes = require('./routes/excursionistas');
 const alertasRoutes = require('./routes/alertas');
+const asistenteRoutes = require('./routes/asistente');
 const { RUTA_REFERENCIA_VOLCAN_DE_AGUA } = require('./services/deteccionAnomalias');
 const { ejecutarLimpiezaDatos, RETENCION_MAXIMA_DIAS } = require('./services/limpiezaDatos');
 const { db, firebaseConfigurado } = require('./config/firebase');
@@ -22,6 +23,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- API ---
 app.use('/api/excursionistas', excursionistasRoutes);
 app.use('/api/alertas', alertasRoutes);
+app.use('/api/asistente', asistenteRoutes);
 
 // Ruta de referencia del sendero, usada por el mapa para dibujar el camino.
 app.get('/api/ruta-referencia', (req, res) => {

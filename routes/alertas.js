@@ -5,12 +5,14 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
+const { registrarAlerta } = require('../services/gestionAlertas');
 
 // POST /api/alertas
 // Alerta manual: el excursionista presiona el boton de emergencia.
 // Esta siempre se clasifica como "grave" porque es una peticion de auxilio
 // directa de la persona, a diferencia de las alertas automaticas del
-// modulo de deteccion de anomalias.
+// modulo de deteccion de anomalias. Si la persona presiona el boton varias
+// veces, se actualiza la misma alerta (no se acumulan filas repetidas).
 router.post('/', async (req, res) => {
   try {
     const { excursionistaId, excursionistaNombre, lat, lng, mensaje } = req.body;
@@ -19,9 +21,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'excursionistaId, lat y lng son obligatorios.' });
     }
 
-    const alertaRef = db.ref('alertas').push();
-    const alerta = {
-      id: alertaRef.key,
+    const alerta = await registrarAlerta(db, {
       excursionistaId,
       excursionistaNombre: excursionistaNombre || 'Excursionista',
       tipo: 'boton_panico',
@@ -31,9 +31,8 @@ router.post('/', async (req, res) => {
       atendida: false,
       origen: 'manual',
       timestamp: Date.now(),
-    };
+    });
 
-    await alertaRef.set(alerta);
     res.status(201).json(alerta);
   } catch (error) {
     console.error('Error al crear alerta:', error);

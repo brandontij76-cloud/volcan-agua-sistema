@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 const { analizarUbicacion, estaEnLaCima, regresoAlPueblo } = require('../services/deteccionAnomalias');
+const { registrarAlerta } = require('../services/gestionAlertas');
 
 // POST /api/excursionistas
 // Registra un nuevo excursionista antes de iniciar el recorrido.
@@ -119,20 +120,19 @@ router.post('/:id/ubicacion', async (req, res) => {
       [`historialUbicaciones/${nuevaUbicacion.timestamp}`]: nuevaUbicacion,
     });
 
-    // 3) Si el analisis detecto algo anormal, registrar la alerta
+    // 3) Si el analisis detecto algo anormal, registrar (o actualizar) la alerta.
+    // Se usa registrarAlerta para que, mientras la misma persona siga con la
+    // misma anomalia sin atender, no se acumulen filas repetidas en el panel.
     let alertaGuardada = null;
     if (alertaGenerada) {
-      const alertaRef = db.ref('alertas').push();
-      alertaGuardada = {
-        id: alertaRef.key,
+      alertaGuardada = await registrarAlerta(db, {
         excursionistaId: req.params.id,
         excursionistaNombre: excursionista.nombre,
         ubicacion: nuevaUbicacion,
         atendida: false,
         origen: 'automatica',
         ...alertaGenerada,
-      };
-      await alertaRef.set(alertaGuardada);
+      });
     }
 
     res.json({ ubicacionActual: nuevaUbicacion, alerta: alertaGuardada });

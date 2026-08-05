@@ -6,11 +6,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
+  /* Tema por defecto: noche (se sobreescribe segun hora via data-theme) */
   --bg-deep: #0b1220;
   --bg-mid: #101b2e;
   --bg-card: #16223a;
   --bg-card-soft: rgba(255, 255, 255, 0.04);
   --border-soft: rgba(255, 255, 255, 0.08);
+  --navbar-bg: rgba(11, 18, 32, 0.75);
+  --input-bg: rgba(255, 255, 255, 0.03);
+  --input-bg-focus: rgba(255, 255, 255, 0.05);
+  --navbar-icon-filter: invert(1) grayscale(1);
+  --hero-grad-from: #ffffff;
+  --hero-mountain-1: #101b2e;
+  --hero-mountain-2: #16223a;
 
   --ambar: #f2a341;
   --ambar-fuerte: #e8892a;
@@ -31,6 +39,67 @@
   --radio-btn: 14px;
   --sombra-suave: 0 8px 30px rgba(0, 0, 0, 0.35);
   --sombra-fuerte: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --hero-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><polygon points="0,400 280,90 420,230 640,40 900,260 1200,400" fill="%23101b2e"/><polygon points="0,400 280,150 420,260 640,120 900,290 1200,400" fill="%2316223a" opacity="0.7"/></svg>');
+}
+
+/* ---------- Tema DIA (mañana, ~6:00-12:59): claro y fresco ---------- */
+:root[data-theme="dia"] {
+  --bg-deep: #eef3f9;
+  --bg-mid: #e4ecf6;
+  --bg-card: #ffffff;
+  --bg-card-soft: rgba(15, 35, 65, 0.035);
+  --border-soft: rgba(15, 35, 65, 0.1);
+  --navbar-bg: rgba(255, 255, 255, 0.8);
+  --input-bg: rgba(15, 35, 65, 0.03);
+  --input-bg-focus: rgba(15, 35, 65, 0.05);
+  --navbar-icon-filter: none;
+  --hero-grad-from: #16223a;
+  --hero-mountain-1: #d7e3f3;
+  --hero-mountain-2: #c3d5ee;
+
+  --texto-principal: #16223a;
+  --texto-suave: #4e5c74;
+  --texto-tenue: #7c879a;
+
+  --teal: #0d9488;
+  --teal-fuerte: #0d9488;
+  --sombra-suave: 0 8px 30px rgba(15, 35, 65, 0.08);
+  --sombra-fuerte: 0 20px 50px rgba(15, 35, 65, 0.14);
+  --hero-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><polygon points="0,400 280,90 420,230 640,40 900,260 1200,400" fill="%23d7e3f3"/><polygon points="0,400 280,150 420,260 640,120 900,290 1200,400" fill="%23c3d5ee" opacity="0.7"/></svg>');
+}
+
+/* ---------- Tema TARDE (~13:00-18:59): calido, atardecer ---------- */
+:root[data-theme="tarde"] {
+  --bg-deep: #241408;
+  --bg-mid: #33200d;
+  --bg-card: #3d2712;
+  --bg-card-soft: rgba(255, 220, 180, 0.05);
+  --border-soft: rgba(255, 200, 150, 0.12);
+  --navbar-bg: rgba(36, 20, 8, 0.75);
+  --input-bg: rgba(255, 220, 180, 0.04);
+  --input-bg-focus: rgba(255, 220, 180, 0.07);
+  --navbar-icon-filter: invert(1) grayscale(1);
+  --hero-grad-from: #fff3e6;
+  --hero-mountain-1: #33200d;
+  --hero-mountain-2: #3d2712;
+
+  --ambar: #ffb454;
+  --ambar-fuerte: #ff9a2e;
+  --teal: #f2825c;
+  --teal-fuerte: #e8703f;
+  --lavanda: #d98bd0;
+
+  --texto-principal: #fff3e6;
+  --texto-suave: #d9b79a;
+  --texto-tenue: #a9856a;
+  --hero-svg: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><polygon points="0,400 280,90 420,230 640,40 900,260 1200,400" fill="%2333200d"/><polygon points="0,400 280,150 420,260 640,120 900,290 1200,400" fill="%233d2712" opacity="0.7"/></svg>');
+}
+
+/* ---------- Tema NOCHE (~19:00-5:59): el original ---------- */
+:root[data-theme="noche"] {
+  --bg-deep: #0b1220;
+  --bg-mid: #101b2e;
+  --bg-card: #16223a;
 }
 
 * {
@@ -46,6 +115,7 @@ body {
   font-family: 'Manrope', system-ui, -apple-system, sans-serif;
   color: var(--texto-principal);
   min-height: 100vh;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -58,11 +128,12 @@ a:hover { color: var(--ambar); }
 
 /* ---------- Navbar ---------- */
 .navbar-volcan {
-  background: rgba(11, 18, 32, 0.75);
+  background: var(--navbar-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-soft);
   padding: 0.9rem 0;
+  transition: background-color 0.4s ease;
 }
 
 .navbar-volcan .navbar-brand {
@@ -94,7 +165,7 @@ a:hover { color: var(--ambar); }
 .navbar-volcan .nav-link:hover { color: var(--ambar) !important; }
 
 .navbar-toggler { border-color: var(--border-soft) !important; }
-.navbar-toggler-icon { filter: invert(1) grayscale(1); }
+.navbar-toggler-icon { filter: var(--navbar-icon-filter); }
 
 /* ---------- Botones ---------- */
 .btn-volcan {
@@ -182,7 +253,7 @@ a:hover { color: var(--ambar); }
   content: '';
   position: absolute;
   inset: 0;
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="none"><polygon points="0,400 280,90 420,230 640,40 900,260 1200,400" fill="%23101b2e"/><polygon points="0,400 280,150 420,260 640,120 900,290 1200,400" fill="%2316223a" opacity="0.7"/></svg>');
+  background-image: var(--hero-svg);
   background-size: cover;
   background-position: bottom;
   opacity: 0.9;
@@ -207,7 +278,7 @@ a:hover { color: var(--ambar); }
 .hero-volcan h1 {
   font-size: clamp(2rem, 5vw, 3.2rem);
   font-weight: 700;
-  background: linear-gradient(135deg, #fff, var(--texto-suave));
+  background: linear-gradient(135deg, var(--hero-grad-from), var(--texto-suave));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -262,14 +333,14 @@ a:hover { color: var(--ambar); }
 .form-label { color: var(--texto-suave); font-weight: 600; font-size: 0.88rem; }
 
 .form-control, .form-select {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--input-bg);
   border: 1px solid var(--border-soft);
   color: var(--texto-principal);
   border-radius: 12px;
   padding: 0.65rem 0.9rem;
 }
 .form-control:focus, .form-select:focus {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--input-bg-focus);
   border-color: var(--teal);
   color: var(--texto-principal);
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
