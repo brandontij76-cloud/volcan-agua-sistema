@@ -51,6 +51,7 @@ if (sesionActiva()) {
 
 // --- Panel principal ---
 function iniciarPanel() {
+  iniciarFichaRuta('fichaRutaAdmin');
   iniciarMapaAdmin();
   cargarDatos();
   setInterval(cargarDatos, INTERVALO_ACTUALIZACION_MS);

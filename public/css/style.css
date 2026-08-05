@@ -450,6 +450,41 @@ a:hover { color: var(--ambar); }
   letter-spacing: 0.02em;
 }
 
+/* ---------- Ficha de ruta (estilo Wikiloc/AllTrails) ---------- */
+.ficha-ruta-metrica-label {
+  color: var(--texto-tenue);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+.ficha-ruta-metrica-valor {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.ficha-ruta-clima {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 1rem;
+}
+.ficha-ruta-icono {
+  text-align: center;
+  min-width: 80px;
+}
+.ficha-ruta-icono-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+.ficha-ruta-icono-label {
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+}
+
 /* ---------- Utilidades ---------- */
 .text-muted { color: var(--texto-tenue) !important; }
 hr { border-color: var(--border-soft); opacity: 1; }

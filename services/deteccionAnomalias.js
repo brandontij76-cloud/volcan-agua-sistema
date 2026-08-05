@@ -39,6 +39,15 @@ const RADIO_PUEBLO_METROS = 300;
 
 // Coordenadas de la cima, usadas para el boton "Llegue a la cima".
 const CIMA_VOLCAN_DE_AGUA = { lat: 14.4450, lng: -90.7433 };
+
+// Datos generales de la ruta (informativos, tipo "ficha" como en Wikiloc).
+// AJUSTA estos valores cuando se cargue el KMZ real de la ruta.
+const INFO_RUTA_VOLCAN_DE_AGUA = {
+  nombre: 'Volcán de Agua',
+  distanciaKm: 22.74,
+  desnivelM: 1763,
+  dificultad: 'Muy difícil',
+};
 const RADIO_CIMA_METROS = 200;
 
 // Umbrales configurables. Se pueden mover a variables de entorno mas adelante
@@ -186,6 +195,7 @@ module.exports = {
   RUTA_REFERENCIA_VOLCAN_DE_AGUA,
   PUEBLO_SANTA_MARIA_DE_JESUS,
   CIMA_VOLCAN_DE_AGUA,
+  INFO_RUTA_VOLCAN_DE_AGUA,
   distanciaHaversine,
   distanciaARuta,
   analizarUbicacion,
