@@ -83,22 +83,34 @@ async function cargarExcursionistas() {
 
     const activos = lista.filter((e) => e.estado === 'activo');
     document.getElementById('contadorActivos').textContent = activos.length;
+    document.getElementById('contadorCimas').textContent = lista.filter((e) => e.cumbreAlcanzada).length;
 
     // Tabla
     const cuerpoTabla = document.getElementById('tablaExcursionistas');
     cuerpoTabla.innerHTML = '';
     if (lista.length === 0) {
-      cuerpoTabla.innerHTML = '<tr><td colspan="7" class="text-muted text-center">Aun no hay excursionistas registrados.</td></tr>';
+      cuerpoTabla.innerHTML = '<tr><td colspan="9" class="text-muted text-center">Aún no hay excursionistas registrados.</td></tr>';
     }
 
     lista.forEach((e) => {
       const ubicacion = e.ubicacionActual
         ? `${e.ubicacionActual.lat.toFixed(5)}, ${e.ubicacionActual.lng.toFixed(5)}`
-        : 'Sin datos aun';
+        : 'Sin datos aún';
 
       const contacto = e.contactoEmergenciaTelefono
         ? `${escaparHtml(e.contactoEmergenciaNombre || 'Sin nombre')} &middot; ${escaparHtml(e.contactoEmergenciaTelefono)}`
         : '-';
+
+      const cimaHtml = e.cumbreAlcanzada
+        ? '<span class="chip">🏔️ Sí</span>'
+        : '<span class="text-muted">—</span>';
+
+      let retornoHtml = '<span class="text-muted">—</span>';
+      if (e.estado === 'finalizado') {
+        retornoHtml = e.retornoConfirmado
+          ? '<span class="chip">✅ Confirmado</span>'
+          : '<span class="chip">⚠️ Sin confirmar</span>';
+      }
 
       const fila = document.createElement('tr');
       fila.className = e.estado === 'activo' ? 'card-estado-activo' : 'card-estado-finalizado';
@@ -108,6 +120,8 @@ async function cargarExcursionistas() {
         <td>${contacto}</td>
         <td>${e.personasGrupo || 1}</td>
         <td><span class="badge ${e.estado === 'activo' ? 'bg-success' : 'bg-secondary'}">${e.estado}</span></td>
+        <td>${cimaHtml}</td>
+        <td>${retornoHtml}</td>
         <td>${ubicacion}</td>
         <td>
           ${e.estado === 'activo'

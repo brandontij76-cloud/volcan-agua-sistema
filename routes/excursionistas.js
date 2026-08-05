@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
-const { analizarUbicacion } = require('../services/deteccionAnomalias');
+const { analizarUbicacion, estaEnLaCima, regresoAlPueblo } = require('../services/deteccionAnomalias');
 
 // POST /api/excursionistas
 // Registra un nuevo excursionista antes de iniciar el recorrido.
@@ -142,8 +142,42 @@ router.post('/:id/ubicacion', async (req, res) => {
   }
 });
 
+// PATCH /api/excursionistas/:id/cima
+// El excursionista confirma que llego a la cima. Se guarda la hora y si la
+// ubicacion reportada coincide con el area real de la cima (informativo,
+// no bloquea la confirmacion: el excursionista puede tener mala señal GPS).
+router.patch('/:id/cima', async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    const ref = db.ref(`excursionistas/${req.params.id}`);
+    const snapshot = await ref.once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: 'Excursionista no encontrado.' });
+    }
+
+    const ubicacionValida = lat != null && lng != null;
+    const coincideConCima = ubicacionValida ? estaEnLaCima({ lat, lng }) : null;
+
+    await ref.update({
+      cumbreAlcanzada: true,
+      cumbreFechaHora: Date.now(),
+      cumbreUbicacionConfirmada: coincideConCima,
+    });
+
+    res.json({
+      mensaje: '¡Felicidades por llegar a la cima!',
+      cumbreUbicacionConfirmada: coincideConCima,
+    });
+  } catch (error) {
+    console.error('Error al confirmar cima:', error);
+    res.status(500).json({ error: 'No se pudo registrar la llegada a la cima.' });
+  }
+});
+
 // PATCH /api/excursionistas/:id/finalizar
-// Marca el recorrido como finalizado (el excursionista regreso sin novedad).
+// Marca el recorrido como finalizado. Se conserva la ultima ubicacion
+// conocida (no se borra), y se verifica informativamente si esa ubicacion
+// esta cerca del pueblo de Santa Maria de Jesus.
 router.patch('/:id/finalizar', async (req, res) => {
   try {
     const ref = db.ref(`excursionistas/${req.params.id}`);
@@ -151,8 +185,21 @@ router.patch('/:id/finalizar', async (req, res) => {
     if (!snapshot.exists()) {
       return res.status(404).json({ error: 'Excursionista no encontrado.' });
     }
-    await ref.update({ estado: 'finalizado', fechaFinalizacion: Date.now() });
-    res.json({ mensaje: 'Recorrido finalizado.' });
+    const excursionista = snapshot.val();
+
+    const ultimaUbicacion = excursionista.ubicacionActual;
+    const retornoConfirmado = ultimaUbicacion ? regresoAlPueblo(ultimaUbicacion) : null;
+
+    await ref.update({
+      estado: 'finalizado',
+      fechaFinalizacion: Date.now(),
+      retornoConfirmado, // true/false/null (null = sin ubicacion para verificar)
+    });
+
+    res.json({
+      mensaje: 'Recorrido finalizado.',
+      retornoConfirmado,
+    });
   } catch (error) {
     console.error('Error al finalizar recorrido:', error);
     res.status(500).json({ error: 'No se pudo finalizar el recorrido.' });

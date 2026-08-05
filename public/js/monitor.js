@@ -11,7 +11,7 @@ document.getElementById('tituloExcursionista').textContent = `Recorrido de ${nom
 
 if (!excursionistaId) {
   document.getElementById('badgeEstado').textContent = 'Falta registro';
-  document.getElementById('estadoGps').textContent = 'No hay un excursionista registrado en esta sesion.';
+  document.getElementById('estadoGps').textContent = 'No hay un excursionista registrado en esta sesión.';
 }
 
 const INTERVALO_ENVIO_MS = 30000; // 30 segundos
@@ -77,8 +77,7 @@ function manejarPosicion(posicion) {
   ultimaPosicion = { lat: latitude, lng: longitude };
 
   document.getElementById('estadoGps').textContent = 'Activo';
-  document.getElementById('badgeEstado').textContent = 'Monitoreo activo';
-  document.getElementById('badgeEstado').className = 'badge bg-success';
+  document.getElementById('badgeEstado').textContent = '🟢 Monitoreo activo';
   document.getElementById('precisionGps').textContent = `${Math.round(accuracy)} m`;
 
   actualizarMarcador(latitude, longitude);
@@ -86,8 +85,7 @@ function manejarPosicion(posicion) {
 
 function manejarErrorGps(error) {
   document.getElementById('estadoGps').textContent = 'Sin acceso al GPS';
-  document.getElementById('badgeEstado').textContent = 'GPS no disponible';
-  document.getElementById('badgeEstado').className = 'badge bg-danger';
+  document.getElementById('badgeEstado').textContent = '🔴 GPS no disponible';
   console.error('Error de geolocalizacion:', error);
 }
 
@@ -136,14 +134,48 @@ document.getElementById('btnPanico').addEventListener('click', async () => {
   }
 });
 
-// --- Finalizar recorrido ---
-document.getElementById('btnFinalizar').addEventListener('click', async () => {
-  const confirmar = confirm('¿Confirmas que finalizaste el recorrido sin novedad?');
+// --- Llegue a la cima ---
+document.getElementById('btnCima').addEventListener('click', async () => {
+  const confirmar = confirm('¿Confirmas que llegaste a la cima del Volcán de Agua? 🏔️');
   if (!confirmar) return;
 
   try {
-    await fetch(`/api/excursionistas/${excursionistaId}/finalizar`, { method: 'PATCH' });
-    alert('Recorrido finalizado. ¡Gracias por registrarte!');
+    const respuesta = await fetch(`/api/excursionistas/${excursionistaId}/cima`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ultimaPosicion ? { lat: ultimaPosicion.lat, lng: ultimaPosicion.lng } : {}),
+    });
+    const resultado = await respuesta.json();
+
+    document.getElementById('chipCima').classList.remove('d-none');
+    document.getElementById('btnCima').disabled = true;
+    document.getElementById('btnCima').textContent = '🏔️ Cima confirmada';
+
+    if (resultado.cumbreUbicacionConfirmada === false) {
+      alert('¡Felicidades! Se registró tu llegada a la cima. (Tu GPS marca una ubicación algo alejada del punto exacto, pero tu confirmación quedó guardada de todas formas.)');
+    } else {
+      alert('¡Felicidades por llegar a la cima del Volcán de Agua! 🎉');
+    }
+  } catch (error) {
+    alert('No se pudo registrar tu llegada a la cima. Intenta de nuevo.');
+    console.error(error);
+  }
+});
+
+// --- Finalizar recorrido ---
+document.getElementById('btnFinalizar').addEventListener('click', async () => {
+  const confirmar = confirm('¿Confirmas que finalizaste el recorrido y regresaste al pueblo?');
+  if (!confirmar) return;
+
+  try {
+    const respuesta = await fetch(`/api/excursionistas/${excursionistaId}/finalizar`, { method: 'PATCH' });
+    const resultado = await respuesta.json();
+
+    if (resultado.retornoConfirmado === false) {
+      alert('Recorrido finalizado. Nota: tu última ubicación GPS no coincide con el pueblo — se guardó de todas formas junto con tu historial completo.');
+    } else {
+      alert('Recorrido finalizado. ¡Bienvenido de vuelta a Santa María de Jesús!');
+    }
     window.location.href = 'index.html';
   } catch (error) {
     alert('No se pudo finalizar el recorrido.');

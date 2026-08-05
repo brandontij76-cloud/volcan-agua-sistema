@@ -89,7 +89,13 @@ Si el `.env` no esta configurado, el sitio va a cargar igual, pero las
 acciones que usan la base de datos (registrar, enviar ubicacion, alertas)
 van a devolver un error hasta que completes las credenciales de Firebase.
 
-## 5. Como probar el flujo completo
+## 5. Nuevas funciones
+
+- **Botón "Llegué a la cima"**: en `monitor.html`, el excursionista puede confirmar que llegó a la cima. Queda guardado con fecha/hora en `cumbreAlcanzada` y `cumbreFechaHora`.
+- **Verificación de retorno al pueblo**: al finalizar el recorrido, el sistema compara la última ubicación GPS conocida contra las coordenadas del pueblo (radio de 300 m) y guarda el resultado en `retornoConfirmado` (true/false/null). El historial completo de ubicaciones se conserva siempre, incluso después de finalizar.
+- **Identidad visual propia**: paleta oscura con acentos ámbar/teal, tipografía Space Grotesk + Manrope, tarjetas con glassmorphism. Todo el CSS vive en `public/css/style.css`.
+
+## 6. Cómo probar el flujo completo
 
 1. Abre `registro.html` en tu telefono (o en el navegador con la
    herramienta de desarrollador simulando ubicacion) y registra un
@@ -103,7 +109,7 @@ van a devolver un error hasta que completes las credenciales de Firebase.
    contrasena, y ahi se ve el mapa con la ubicacion, la lista de
    excursionistas y las alertas.
 
-## 6. Privacidad: borrado automatico de datos personales
+## 7. Privacidad: borrado automatico de datos personales
 
 El nombre, telefono y contacto de emergencia de cada excursionista se
 eliminan automaticamente de Firebase **3 dias** despues del registro (el
@@ -119,7 +125,7 @@ activo. Si necesitas que se ejecute aunque el servidor este apagado (por
 ejemplo en un hosting con "cron jobs" o "scheduled functions"), esa logica
 se puede migrar a una Cloud Function programada de Firebase mas adelante.
 
-## 7. Puntos para seguir desarrollando
+## 8. Puntos para seguir desarrollando
 
 - **Ruta de referencia real:** las coordenadas del sendero en
   `services/deteccionAnomalias.js` (`RUTA_REFERENCIA_VOLCAN_DE_AGUA`) son

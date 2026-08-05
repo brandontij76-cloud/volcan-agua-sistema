@@ -19,13 +19,27 @@
 // puntos, o tomarlos de una plataforma como Wikiloc/AllTrails).
 const RUTA_REFERENCIA_VOLCAN_DE_AGUA = [
   { lat: 14.4708, lng: -90.7275 }, // Parque central, Santa Maria de Jesus (inicio)
+  { lat: 14.4693, lng: -90.7291 },
   { lat: 14.4675, lng: -90.7312 },
+  { lat: 14.4654, lng: -90.7331 },
   { lat: 14.4630, lng: -90.7355 },
+  { lat: 14.4606, lng: -90.7373 },
   { lat: 14.4580, lng: -90.7390 },
+  { lat: 14.4552, lng: -90.7401 },
   { lat: 14.4520, lng: -90.7410 },
+  { lat: 14.4487, lng: -90.7419 },
   { lat: 14.4460, lng: -90.7425 },
   { lat: 14.4450, lng: -90.7433 }, // Cima del Volcan de Agua (fin)
 ];
+
+// Coordenadas del punto de partida (pueblo), usadas para detectar si un
+// excursionista efectivamente regreso al pueblo al finalizar su recorrido.
+const PUEBLO_SANTA_MARIA_DE_JESUS = { lat: 14.4708, lng: -90.7275 };
+const RADIO_PUEBLO_METROS = 300;
+
+// Coordenadas de la cima, usadas para el boton "Llegue a la cima".
+const CIMA_VOLCAN_DE_AGUA = { lat: 14.4450, lng: -90.7433 };
+const RADIO_CIMA_METROS = 200;
 
 // Umbrales configurables. Se pueden mover a variables de entorno mas adelante
 // si se necesita ajustarlos sin tocar codigo.
@@ -156,11 +170,27 @@ function analizarUbicacion(excursionista, nuevaUbicacion) {
   };
 }
 
+// Verifica si una ubicacion esta lo suficientemente cerca de la cima como
+// para considerar que el excursionista efectivamente llego.
+function estaEnLaCima(ubicacion) {
+  return distanciaHaversine(ubicacion, CIMA_VOLCAN_DE_AGUA) <= RADIO_CIMA_METROS;
+}
+
+// Verifica si una ubicacion esta lo suficientemente cerca del pueblo como
+// para considerar que el excursionista efectivamente regreso.
+function regresoAlPueblo(ubicacion) {
+  return distanciaHaversine(ubicacion, PUEBLO_SANTA_MARIA_DE_JESUS) <= RADIO_PUEBLO_METROS;
+}
+
 module.exports = {
   RUTA_REFERENCIA_VOLCAN_DE_AGUA,
+  PUEBLO_SANTA_MARIA_DE_JESUS,
+  CIMA_VOLCAN_DE_AGUA,
   distanciaHaversine,
   distanciaARuta,
   analizarUbicacion,
+  estaEnLaCima,
+  regresoAlPueblo,
   UMBRAL_DESVIACION_METROS,
   UMBRAL_INACTIVIDAD_MINUTOS,
 };

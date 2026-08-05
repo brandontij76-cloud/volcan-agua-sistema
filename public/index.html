@@ -3,62 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema de Gestion y Seguridad Turistica - Volcan de Agua</title>
+  <title>Cumbre Segura · Volcán de Agua</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <nav class="navbar navbar-expand-lg navbar-volcan">
+  <nav class="navbar navbar-expand-lg navbar-volcan sticky-top">
     <div class="container">
-      <a class="navbar-brand" href="index.html">Volcan de Agua &middot; Santa Maria de Jesus</a>
+      <a class="navbar-brand" href="index.html">Cumbre Segura</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navMenu">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item"><a class="nav-link" href="registro.html">Registrarme para un recorrido</a></li>
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+          <li class="nav-item"><a class="nav-link" href="registro.html">Registrar recorrido</a></li>
           <li class="nav-item"><a class="nav-link" href="admin.html">Panel administrativo</a></li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <header class="hero-volcan text-center">
+  <header class="hero-volcan">
     <div class="container">
-      <h1 class="display-5 fw-bold">Sube seguro. Baja seguro.</h1>
-      <p class="lead">Sistema de registro, monitoreo GPS y alertas de emergencia para excursionistas del Volcan de Agua.</p>
-      <a href="registro.html" class="btn btn-light btn-lg mt-2">Registrar mi recorrido</a>
+      <span class="hero-eyebrow">Municipalidad de Santa María de Jesús</span>
+      <h1>Sube con confianza.<br>Baja con la conciencia tranquila.</h1>
+      <p class="lead mx-auto">
+        Monitoreo GPS en tiempo real, alertas automáticas y un botón de emergencia
+        para cada excursionista que sube al Volcán de Agua.
+      </p>
+      <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
+        <a href="registro.html" class="btn btn-volcan btn-lg">Registrar mi recorrido</a>
+        <a href="admin.html" class="btn btn-outline-light btn-lg">Panel administrativo</a>
+      </div>
     </div>
   </header>
 
-  <main class="container my-5">
-    <div class="row g-4 text-center">
+  <main class="container my-5 py-3">
+    <div class="row g-4">
       <div class="col-md-4">
-        <h5>1. Registrate</h5>
-        <p class="text-muted">Antes de subir, completa un registro rapido con tus datos y la hora estimada de salida.</p>
+        <div class="card-feature text-center">
+          <div class="icono-feature">📝</div>
+          <h5>Regístrate en minutos</h5>
+          <p>Antes de subir, deja tus datos y los de un contacto de emergencia. Rápido, desde tu celular.</p>
+        </div>
       </div>
       <div class="col-md-4">
-        <h5>2. Comparte tu ubicacion</h5>
-        <p class="text-muted">Durante el recorrido, tu telefono envia tu posicion para que la Municipalidad pueda ubicarte si algo pasa.</p>
+        <div class="card-feature text-center">
+          <div class="icono-feature">📍</div>
+          <h5>Ubicación en tiempo real</h5>
+          <p>Tu posición se comparte automáticamente durante todo el recorrido, sin instalar ninguna app.</p>
+        </div>
       </div>
       <div class="col-md-4">
-        <h5>3. Boton de emergencia</h5>
-        <p class="text-muted">Si tienes un problema, un solo boton notifica de inmediato a los administradores con tu ubicacion exacta.</p>
+        <div class="card-feature text-center">
+          <div class="icono-feature">🆘</div>
+          <h5>Alerta inmediata</h5>
+          <p>Un botón notifica al instante a la Municipalidad con tu ubicación exacta si algo pasa.</p>
+        </div>
       </div>
     </div>
 
-    <div class="alert alert-light border mt-5" role="alert">
-      <strong>Municipalidad de Santa Maria de Jesus:</strong> el panel administrativo te permite ver en tiempo real
-      a los excursionistas activos, su ubicacion en el mapa y las alertas generadas automaticamente o por boton de panico.
-      <a href="admin.html">Ir al panel &rarr;</a>
+    <div class="alert alert-light mt-5 d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <strong class="text-white">¿Eres parte del equipo administrativo?</strong>
+        <div class="text-muted">Mira en tiempo real quién está en el volcán, revisa alertas y confirma regresos.</div>
+      </div>
+      <a href="admin.html" class="btn btn-ambar">Ir al panel &rarr;</a>
     </div>
   </main>
 
-  <footer class="footer-volcan text-center border-top">
-    <div class="container">
-      Sistema de Gestion y Seguridad Turistica &middot; Municipalidad de Santa Maria de Jesus, Sacatepequez
-    </div>
+  <footer class="footer-volcan">
+    Sistema de Gestión y Seguridad Turística · Municipalidad de Santa María de Jesús, Sacatepéquez
+    <span class="footer-firma">Creado por el Ing. Brandon TC</span>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
