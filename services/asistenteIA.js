@@ -212,7 +212,7 @@ async function llamarGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  const modelo = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const modelo = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const controlador = new AbortController();
   const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_MS);
 

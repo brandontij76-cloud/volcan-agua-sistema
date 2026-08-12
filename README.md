@@ -187,7 +187,7 @@ recomendado), en vez de mostrar solo datos crudos.
 3. Agrega en tu `.env` (y en las variables de entorno de Render):
    ```
    GEMINI_API_KEY=tu-llave-aqui
-   GEMINI_MODEL=gemini-2.0-flash
+   GEMINI_MODEL=gemini-flash-latest
    ```
    Verifica en Google AI Studio cual modelo esta disponible en el nivel
    gratuito al momento de configurarlo, porque los nombres de modelo

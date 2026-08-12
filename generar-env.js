@@ -58,7 +58,7 @@ FIREBASE_DATABASE_URL=${urlFinal}
 PORT=3000
 ADMIN_PASSWORD=${passwordFinal}
 GEMINI_API_KEY=${geminiApiKey || ''}
-GEMINI_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-flash-latest
 `;
 
 fs.writeFileSync(path.join(__dirname, '.env'), contenidoEnv, 'utf8');
