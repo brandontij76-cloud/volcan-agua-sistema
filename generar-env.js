@@ -6,7 +6,7 @@
 //
 // USO (desde la terminal, dentro de la carpeta del proyecto):
 //
-//   node generar-env.js "RUTA_DEL_JSON" "URL_DE_TU_DATABASE" "TU_PASSWORD_ADMIN"
+//   node generar-env.js "RUTA_DEL_JSON" "URL_DE_TU_DATABASE" "TU_PASSWORD_ADMIN" "TU_GEMINI_API_KEY(opcional)"
 //
 // Ejemplo real (ajusta la ruta y el password a los tuyos):
 //
@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const [, , rutaJson, databaseUrl, adminPassword] = process.argv;
+const [, , rutaJson, databaseUrl, adminPassword, geminiApiKey] = process.argv;
 
 if (!rutaJson) {
   console.error(
@@ -57,6 +57,8 @@ FIREBASE_PRIVATE_KEY="${privateKeyEscapada}"
 FIREBASE_DATABASE_URL=${urlFinal}
 PORT=3000
 ADMIN_PASSWORD=${passwordFinal}
+GEMINI_API_KEY=${geminiApiKey || ''}
+GEMINI_MODEL=gemini-2.0-flash
 `;
 
 fs.writeFileSync(path.join(__dirname, '.env'), contenidoEnv, 'utf8');
@@ -73,5 +75,10 @@ if (!databaseUrl) {
 if (!adminPassword) {
   console.log('\n[AVISO] No pasaste una contrasena de administrador, se puso una temporal.');
   console.log('  Edita ADMIN_PASSWORD en el archivo .env antes de usar el panel.');
+}
+if (!geminiApiKey) {
+  console.log('\n[INFO] No pasaste una llave de Gemini. El asistente va a funcionar');
+  console.log('  igual, solo sin el texto en lenguaje natural generado por IA.');
+  console.log('  La puedes agregar despues editando GEMINI_API_KEY en el .env.');
 }
 console.log('');

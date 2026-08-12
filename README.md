@@ -125,7 +125,7 @@ activo. Si necesitas que se ejecute aunque el servidor este apagado (por
 ejemplo en un hosting con "cron jobs" o "scheduled functions"), esa logica
 se puede migrar a una Cloud Function programada de Firebase mas adelante.
 
-## 9. Asistente inteligente (clima + recomendaciones + aprendizaje)
+## 8. Asistente inteligente (clima + recomendaciones + aprendizaje)
 
 `services/asistenteIA.js` combina tres fuentes reales de informacion:
 
@@ -143,6 +143,82 @@ se puede migrar a una Cloud Function programada de Firebase mas adelante.
 
 Se muestra automaticamente en `registro.html` cuando la persona elige su
 hora de salida, antes de enviar el formulario.
+
+## 9. Inteligencia Artificial del proyecto
+
+Esta seccion documenta la metodologia de IA usada, pensada para poder
+explicarla y defenderla en la presentacion de tesis.
+
+### 9.1 Machine Learning propio (regresion logistica)
+
+`services/modeloRiesgoIA.js` implementa un **modelo de clasificacion
+binaria (regresion logistica) entrenado desde cero con descenso de
+gradiente**, sin usar ninguna libreria externa de ML. Esto permite explicar
+el algoritmo linea por linea en la defensa.
+
+- **Datos de entrenamiento**: los excursionistas ya registrados en Firebase.
+- **Variable objetivo (etiqueta)**: si ese recorrido tuvo o no alguna alerta.
+- **Variables de entrada (features)**: hora de salida (normalizada), si es
+  temporada lluviosa (mayo-octubre en Guatemala), y tamano del grupo.
+- **Algoritmo**: regresion logistica, optimizada con descenso de gradiente
+  por lotes (800 epocas, tasa de aprendizaje 0.15).
+- **Metricas reportadas**: exactitud, precision, exhaustividad y matriz de
+  confusion, calculadas sobre el mismo conjunto de entrenamiento (no hay
+  suficientes datos todavia para separar un conjunto de prueba aparte;
+  esto se documenta honestamente como limitacion actual).
+- **Umbral minimo**: el modelo requiere al menos 10 recorridos registrados
+  para entrenar. Con menos datos, indica explicitamente que la muestra es
+  insuficiente en vez de inventar una prediccion sin sustento.
+- **Mejora continua**: como se re-entrena con los datos mas recientes en
+  cada consulta, la precision del modelo mejora conforme mas gente use el
+  sistema real (esto es una limitacion honesta a mencionar en la defensa:
+  un sistema municipal nuevo empieza con pocos datos).
+
+### 9.2 Google Gemini (IA generativa, capa gratuita)
+
+`services/asistenteIA.js` (funcion `generarTextoConGemini`) usa la API
+gratuita de Google Gemini para redactar, en lenguaje natural, un resumen
+amigable de todo lo anterior (clima + riesgo del modelo + equipo
+recomendado), en vez de mostrar solo datos crudos.
+
+**Como activarlo** (opcional, el sistema funciona igual sin esto):
+1. Entra a https://aistudio.google.com/apikey (gratis, sin tarjeta)
+2. Genera una API key
+3. Agrega en tu `.env` (y en las variables de entorno de Render):
+   ```
+   GEMINI_API_KEY=tu-llave-aqui
+   GEMINI_MODEL=gemini-2.0-flash
+   ```
+   Verifica en Google AI Studio cual modelo esta disponible en el nivel
+   gratuito al momento de configurarlo, porque los nombres de modelo
+   cambian con el tiempo.
+
+Si `GEMINI_API_KEY` no esta configurada, o si la llamada a la API falla
+por cualquier motivo, el sistema sigue funcionando normalmente mostrando
+las recomendaciones como lista (nunca depende de Gemini para operar).
+
+### 9.3 Chatbot (Gemini) para excursionistas y para el equipo administrativo
+
+Además del resumen automático del registro, hay un **chat flotante** (botón
+💬 abajo a la derecha) disponible en:
+
+- `index.html`, `registro.html`, `monitor.html`: contexto "usuario", responde
+  dudas sobre la ruta, el clima, que llevar, seguridad y como usar el sistema.
+- `admin.html`: contexto "admin" (solo visible despues de iniciar sesion),
+  con **datos en vivo del sistema** inyectados en el prompt (cuantos
+  excursionistas activos hay, alertas sin atender, estado del modelo de ML),
+  para que el equipo administrativo pueda preguntar cosas como "¿cuántas
+  alertas hay pendientes?" y reciba una respuesta basada en los datos reales
+  de ese momento.
+
+Usa la misma `GEMINI_API_KEY` configurada en la seccion 9.2. Si no esta
+configurada, el chat responde con un mensaje honesto explicando que falta
+activarla, en vez de fallar o inventar informacion.
+
+El panel administrativo tambien muestra una tarjeta con las **metricas
+reales del modelo de ML** (exactitud, precision, exhaustividad, cuantos
+recorridos lo entrenaron), como evidencia visible de que el modelo esta
+funcionando de verdad y no es solo una simulacion.
 
 ## 10. Temas segun hora del dia
 

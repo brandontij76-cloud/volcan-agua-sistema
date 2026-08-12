@@ -23,7 +23,8 @@
 // sistema no se cae: usa reglas estacionales genericas como respaldo, y lo
 // indica claramente en la respuesta (fuenteClima: 'api' | 'estacional').
 
-const { CIMA_VOLCAN_DE_AGUA } = require('./deteccionAnomalias');
+const { CIMA_VOLCAN_DE_AGUA, INFO_RUTA_VOLCAN_DE_AGUA } = require('./deteccionAnomalias');
+const { predecirRiesgoRecorrido } = require('./modeloRiesgoIA');
 
 const TIEMPO_LIMITE_MS = 6000;
 
@@ -204,9 +205,190 @@ async function calcularEstadisticasHistoricas(db, horaSalida) {
 }
 
 // ---------------------------------------------------------------------
+// Funcion base: manda un prompt de texto a Gemini y regresa la respuesta.
+// La reutilizan tanto el resumen automatico como el chatbot.
+// ---------------------------------------------------------------------
+async function llamarGemini(prompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const modelo = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const controlador = new AbortController();
+  const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_MS);
+
+  try {
+    const respuesta = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        signal: controlador.signal,
+      }
+    );
+
+    if (!respuesta.ok) throw new Error(`Gemini respondio ${respuesta.status}`);
+
+    const datos = await respuesta.json();
+    const texto = datos.candidates?.[0]?.content?.parts?.[0]?.text;
+    return texto ? texto.trim() : null;
+  } catch (error) {
+    console.warn('[Asistente IA] Llamada a Gemini fallo:', error.message);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ---------------------------------------------------------------------
+// Google Gemini (capa gratuita) para redactar el mensaje final en
+// lenguaje natural, combinando clima + riesgo del modelo de ML + reglas
+// de equipo en un parrafo amigable, en vez de una lista fria de datos.
+//
+// Requiere la variable de entorno GEMINI_API_KEY (gratis, se obtiene en
+// https://aistudio.google.com/apikey, sin tarjeta de credito).
+//
+// Si no esta configurada, o si la llamada falla, el sistema sigue
+// funcionando normalmente con las recomendaciones en forma de lista
+// (nunca depende de esto para funcionar).
+// ---------------------------------------------------------------------
+async function generarTextoConGemini({ clima, recomendaciones, riesgo, horaSalida }) {
+  const climaTexto = clima.fuenteClima === 'api'
+    ? `temperatura aproximada ${Math.round(clima.temperaturaC)}°C, ${clima.probabilidadLluvia}% de probabilidad de lluvia, viento ${Math.round(clima.vientoKmh)} km/h`
+    : `clima estimado por temporada (${clima.temporada}), ~${clima.temperaturaC}°C`;
+
+  const riesgoTexto = riesgo?.muestraSuficiente
+    ? `el modelo de riesgo (entrenado con ${riesgo.totalMuestras} recorridos anteriores) estima ${riesgo.probabilidadRiesgo}% de probabilidad de que ocurra alguna alerta en este horario`
+    : 'todavia no hay suficientes datos historicos para estimar un nivel de riesgo';
+
+  const prompt =
+    `Eres un asistente de senderismo para el Volcan de Agua en Guatemala. ` +
+    `Un excursionista va a salir a las ${horaSalida || '06:00'}. Datos: ${climaTexto}. ${riesgoTexto}. ` +
+    `Equipo recomendado: ${recomendaciones.join('; ')}. ` +
+    `Escribe un parrafo corto (maximo 60 palabras), calido y directo en español de Guatemala, ` +
+    `resumiendo esto para el excursionista. No uses markdown ni listas, solo texto plano.`;
+
+  return llamarGemini(prompt);
+}
+
+// ---------------------------------------------------------------------
+// Estado actual del modelo de ML (para mostrar en el panel administrativo,
+// como evidencia de que el modelo esta realmente entrenado y funcionando).
+// ---------------------------------------------------------------------
+async function obtenerEstadoModelo(db) {
+  const resultado = await predecirRiesgoRecorrido(db, {
+    horaSalidaEstimada: '06:00',
+    personasGrupo: 1,
+    fechaRegistro: Date.now(),
+  });
+  return {
+    muestraSuficiente: resultado.muestraSuficiente,
+    totalMuestras: resultado.totalMuestras,
+    muestrasMinimasRequeridas: resultado.muestrasMinimasRequeridas,
+    metricas: resultado.metricas,
+  };
+}
+
+// ---------------------------------------------------------------------
+// CHATBOT: responde preguntas libres, tanto de excursionistas como del
+// equipo administrativo. Al admin se le da contexto en vivo (cuantos
+// excursionistas activos hay, alertas sin atender, estado del modelo)
+// para que pueda preguntar cosas como "¿cuantas alertas hay pendientes?".
+// ---------------------------------------------------------------------
+async function construirContextoAdmin(db) {
+  try {
+    const [snapshotExcursionistas, snapshotAlertas, estadoModelo] = await Promise.all([
+      db.ref('excursionistas').once('value'),
+      db.ref('alertas').once('value'),
+      obtenerEstadoModelo(db),
+    ]);
+
+    const excursionistas = Object.values(snapshotExcursionistas.val() || {});
+    const alertas = Object.values(snapshotAlertas.val() || {});
+
+    const activos = excursionistas.filter((e) => e.estado === 'activo').length;
+    const sinAtender = alertas.filter((a) => !a.atendida).length;
+    const cimasAlcanzadas = excursionistas.filter((e) => e.cumbreAlcanzada).length;
+
+    const modeloTexto = estadoModelo.muestraSuficiente
+      ? `entrenado con ${estadoModelo.totalMuestras} recorridos, ${estadoModelo.metricas.exactitud}% de exactitud`
+      : `aun sin suficientes datos para entrenar (tiene ${estadoModelo.totalMuestras}, necesita minimo ${estadoModelo.muestrasMinimasRequeridas})`;
+
+    return (
+      `Eres el asistente interno de "Cumbre Segura", el sistema de la Municipalidad de Santa Maria de Jesus ` +
+      `para monitorear excursionistas del Volcan de Agua. Hablas con un miembro del equipo administrativo. ` +
+      `Datos actuales del sistema: ${excursionistas.length} excursionistas registrados en total, ${activos} activos ahorita, ` +
+      `${sinAtender} alertas sin atender, ${cimasAlcanzadas} personas han confirmado llegar a la cima. ` +
+      `El modelo de Machine Learning de riesgo esta ${modeloTexto}. ` +
+      `Responde de forma breve y profesional, en español. Si preguntan algo que no esta en estos datos, ` +
+      `dilo con honestidad y ofrece explicar como funciona esa parte del sistema en general.`
+    );
+  } catch (error) {
+    console.warn('[Asistente IA] No se pudo construir contexto de admin:', error.message);
+    return (
+      `Eres el asistente interno de "Cumbre Segura" (sistema municipal para el Volcan de Agua). ` +
+      `No se pudo cargar el estado actual de la base de datos. Responde de forma breve y profesional, ` +
+      `explicando como funciona el sistema en general si preguntan.`
+    );
+  }
+}
+
+function construirContextoUsuario() {
+  return (
+    `Eres el asistente de "Cumbre Segura" para excursionistas que van a subir al Volcan de Agua, Guatemala. ` +
+    `Datos de la ruta: ${INFO_RUTA_VOLCAN_DE_AGUA.distanciaKm} km, ${INFO_RUTA_VOLCAN_DE_AGUA.desnivelM} m de desnivel, ` +
+    `dificultad "${INFO_RUTA_VOLCAN_DE_AGUA.dificultad}". El sistema permite registrarse, compartir ubicacion GPS ` +
+    `en tiempo real, presionar un boton de emergencia, confirmar la llegada a la cima, y finalizar el recorrido. ` +
+    `Responde dudas sobre el recorrido, que llevar, seguridad, clima o el uso del sistema. Se breve, calido, ` +
+    `en español de Guatemala. Si preguntan algo fuera de este tema, redirige amablemente al tema del recorrido.`
+  );
+}
+
+async function responderChat(db, { pregunta, contexto, historial }) {
+  if (!pregunta || !pregunta.trim()) {
+    return { respuesta: '¿En qué te puedo ayudar?', generadoConIA: false };
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    return {
+      respuesta:
+        'El chat con IA todavía no está activado en este sistema (falta configurar GEMINI_API_KEY). ' +
+        'Mientras tanto, puedes usar el formulario de registro o el panel administrativo directamente.',
+      generadoConIA: false,
+    };
+  }
+
+  const contextoSistema = contexto === 'admin'
+    ? await construirContextoAdmin(db)
+    : construirContextoUsuario();
+
+  const historialTexto = (historial || [])
+    .slice(-6) // solo los ultimos intercambios, para no alargar el prompt de mas
+    .map((h) => `${h.rol === 'usuario' ? 'Persona' : 'Asistente'}: ${h.texto}`)
+    .join('\n');
+
+  const prompt =
+    `${contextoSistema}\n\n` +
+    (historialTexto ? `Conversacion previa:\n${historialTexto}\n\n` : '') +
+    `Pregunta nueva de la persona: ${pregunta}\n\n` +
+    `Responde solo la pregunta nueva, en texto plano, maximo 80 palabras.`;
+
+  const respuestaTexto = await llamarGemini(prompt);
+
+  if (!respuestaTexto) {
+    return {
+      respuesta: 'No pude generar una respuesta en este momento. Intenta de nuevo en unos segundos.',
+      generadoConIA: false,
+    };
+  }
+
+  return { respuesta: respuestaTexto, generadoConIA: true };
+}
+
+// ---------------------------------------------------------------------
 // Punto de entrada: junta todo en una sola respuesta
 // ---------------------------------------------------------------------
-async function generarSugerenciaCompleta(db, { horaSalida, fecha }) {
+async function generarSugerenciaCompleta(db, { horaSalida, fecha, personasGrupo }) {
   const fechaBase = fecha ? new Date(fecha) : new Date();
   const [horas, minutos] = (horaSalida || '06:00').split(':').map(Number);
   const fechaHoraSalida = new Date(fechaBase);
@@ -219,11 +401,19 @@ async function generarSugerenciaCompleta(db, { horaSalida, fecha }) {
 
   const recomendaciones = generarRecomendacionesEquipo({ horaSalida, clima });
   const estadisticaHistorica = await calcularEstadisticasHistoricas(db, horaSalida);
+  const riesgo = await predecirRiesgoRecorrido(db, {
+    horaSalidaEstimada: horaSalida,
+    personasGrupo,
+    fechaRegistro: fechaBase.getTime(),
+  });
+  const textoGemini = await generarTextoConGemini({ clima, recomendaciones, riesgo, horaSalida });
 
   return {
     clima,
     recomendaciones,
     estadisticaHistorica,
+    riesgo,
+    textoGemini,
   };
 }
 
@@ -232,5 +422,8 @@ module.exports = {
   climaEstacionalDeRespaldo,
   generarRecomendacionesEquipo,
   calcularEstadisticasHistoricas,
+  generarTextoConGemini,
   generarSugerenciaCompleta,
+  obtenerEstadoModelo,
+  responderChat,
 };

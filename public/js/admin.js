@@ -54,8 +54,64 @@ function iniciarPanel() {
   iniciarFichaRuta('fichaRutaAdmin');
   iniciarMapaAdmin();
   cargarDatos();
+  cargarEstadoModelo();
+  iniciarChatbot('admin');
   setInterval(cargarDatos, INTERVALO_ACTUALIZACION_MS);
-  document.getElementById('btnActualizar').addEventListener('click', cargarDatos);
+  document.getElementById('btnActualizar').addEventListener('click', () => {
+    cargarDatos();
+    cargarEstadoModelo();
+  });
+}
+
+async function cargarEstadoModelo() {
+  const contenedor = document.getElementById('estadoModeloIA');
+  if (!contenedor) return;
+
+  try {
+    const respuesta = await fetch('/api/asistente/estado-modelo');
+    const estado = await respuesta.json();
+
+    if (!estado.muestraSuficiente) {
+      contenedor.innerHTML = `
+        <div class="card p-3">
+          <div class="chip mb-2">🤖 Modelo de Machine Learning</div>
+          <div class="text-muted small">
+            Aún no hay suficientes recorridos registrados para entrenar el modelo
+            (tiene ${estado.totalMuestras}, necesita mínimo ${estado.muestrasMinimasRequeridas}).
+            Mientras más gente use el sistema, el modelo empieza a predecir riesgo automáticamente.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const m = estado.metricas;
+    contenedor.innerHTML = `
+      <div class="card p-3">
+        <div class="chip mb-2">🤖 Modelo de Machine Learning (regresión logística)</div>
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="ficha-ruta-metrica-label">Entrenado con</div>
+            <div class="ficha-ruta-metrica-valor">${estado.totalMuestras} recorridos</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="ficha-ruta-metrica-label">Exactitud</div>
+            <div class="ficha-ruta-metrica-valor">${m.exactitud ?? '—'}%</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="ficha-ruta-metrica-label">Precisión</div>
+            <div class="ficha-ruta-metrica-valor">${m.precision ?? '—'}%</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="ficha-ruta-metrica-label">Exhaustividad</div>
+            <div class="ficha-ruta-metrica-valor">${m.exhaustividad ?? '—'}%</div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error al cargar estado del modelo:', error);
+  }
 }
 
 function iniciarMapaAdmin() {

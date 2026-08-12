@@ -23,7 +23,8 @@ document.getElementById('horaSalida').addEventListener('change', async (evento) 
   contenido.innerHTML = 'Consultando el clima esperado para tu salida…';
 
   try {
-    const respuesta = await fetch(`/api/asistente/recomendaciones?horaSalida=${encodeURIComponent(horaSalida)}`);
+    const personasGrupo = document.getElementById('personasGrupo').value || 1;
+    const respuesta = await fetch(`/api/asistente/recomendaciones?horaSalida=${encodeURIComponent(horaSalida)}&personasGrupo=${personasGrupo}`);
     const datos = await respuesta.json();
 
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudo consultar el asistente.');
@@ -36,11 +37,30 @@ document.getElementById('horaSalida').addEventListener('change', async (evento) 
 });
 
 function construirHtmlAsistente(datos) {
-  const { clima, recomendaciones, estadisticaHistorica } = datos;
+  const { clima, recomendaciones, estadisticaHistorica, riesgo, textoGemini } = datos;
+
+  // Si Gemini generó un resumen en lenguaje natural, se muestra primero
+  // (es lo más fácil de leer). Si no, se arma el resumen con los datos
+  // crudos como respaldo.
+  if (textoGemini) {
+    return `
+      <div class="chip mb-2">✨ Generado con IA (Gemini)</div>
+      <div>${textoGemini}</div>
+      <div class="mt-2 mb-1"><strong>Qué llevar:</strong></div>
+      <ul class="mb-0 ps-3">${recomendaciones.map((r) => `<li>${r}</li>`).join('')}</ul>
+    `;
+  }
 
   const climaTexto = clima.fuenteClima === 'api'
     ? `Pronóstico para tu hora de salida: ~${Math.round(clima.temperaturaC)}°C, ${clima.probabilidadLluvia}% de probabilidad de lluvia, viento ${Math.round(clima.vientoKmh)} km/h.`
     : `No se pudo consultar el pronóstico exacto; según la temporada (${clima.temporada === 'lluviosa' ? 'lluviosa' : 'seca'}) se esperan condiciones típicas de ~${clima.temperaturaC}°C.`;
+
+  let riesgoTexto = '';
+  if (riesgo?.muestraSuficiente) {
+    riesgoTexto = `<div class="mt-2">🤖 Modelo de riesgo (entrenado con ${riesgo.totalMuestras} recorridos previos): <strong>${riesgo.probabilidadRiesgo}%</strong> de probabilidad de alguna alerta en este horario.</div>`;
+  } else if (riesgo) {
+    riesgoTexto = `<div class="mt-2 text-muted small">🤖 El modelo de riesgo aún no tiene suficientes recorridos registrados (mínimo ${riesgo.muestrasMinimasRequeridas}) para predecir con confianza.</div>`;
+  }
 
   let historicoTexto = '';
   if (estadisticaHistorica?.muestraSuficiente) {
@@ -51,6 +71,7 @@ function construirHtmlAsistente(datos) {
 
   return `
     <div>${climaTexto}</div>
+    ${riesgoTexto}
     ${historicoTexto}
     <div class="mt-2 mb-1"><strong>Qué llevar:</strong></div>
     <ul class="mb-0 ps-3">${listaRecomendaciones}</ul>

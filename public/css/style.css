@@ -487,6 +487,100 @@ a:hover { color: var(--ambar); }
   font-size: 0.75rem;
 }
 
+/* ---------- Chatbot flotante ---------- */
+#chatbotFlotante {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1050;
+}
+
+.chatbot-boton {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--teal-fuerte), var(--teal));
+  font-size: 1.5rem;
+  box-shadow: var(--sombra-fuerte);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.chatbot-boton:hover { transform: scale(1.06); }
+
+.chatbot-panel {
+  position: absolute;
+  bottom: 68px;
+  right: 0;
+  width: 320px;
+  max-width: 88vw;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radio-card);
+  box-shadow: var(--sombra-fuerte);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chatbot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  background: var(--bg-card-soft);
+  border-bottom: 1px solid var(--border-soft);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.chatbot-cerrar {
+  background: none;
+  border: none;
+  color: var(--texto-tenue);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.chatbot-mensajes {
+  padding: 1rem;
+  height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.chatbot-mensaje {
+  max-width: 85%;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.chatbot-mensaje-bot {
+  align-self: flex-start;
+  background: var(--bg-card-soft);
+  border: 1px solid var(--border-soft);
+  color: var(--texto-principal);
+}
+.chatbot-mensaje-usuario {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--teal-fuerte), var(--teal));
+  color: #06231f;
+}
+
+.chatbot-form {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--border-soft);
+}
+.chatbot-form .form-control {
+  flex: 1;
+  font-size: 0.85rem;
+}
+
 /* ---------- Utilidades ---------- */
 .text-muted { color: var(--texto-tenue) !important; }
 hr { border-color: var(--border-soft); opacity: 1; }
