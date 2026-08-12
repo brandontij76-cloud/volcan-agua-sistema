@@ -260,7 +260,7 @@ a:hover { color: var(--ambar); }
   --hero-grad-from: #ffffff;
   background:
     linear-gradient(180deg, rgba(6, 10, 20, 0.45) 0%, rgba(6, 10, 20, 0.8) 100%),
-    url('img/volcan-tormenta-electrica.jpg') center 65% / cover no-repeat;
+    url('../img/volcan-tormenta-electrica.jpg') center 65% / cover no-repeat;
 }
 
 .hero-foto-credito {
