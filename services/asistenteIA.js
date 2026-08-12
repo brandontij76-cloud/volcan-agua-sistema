@@ -26,7 +26,8 @@
 const { CIMA_VOLCAN_DE_AGUA, INFO_RUTA_VOLCAN_DE_AGUA } = require('./deteccionAnomalias');
 const { predecirRiesgoRecorrido } = require('./modeloRiesgoIA');
 
-const TIEMPO_LIMITE_MS = 6000;
+const TIEMPO_LIMITE_MS = 6000; // clima (Open-Meteo es rapido)
+const TIEMPO_LIMITE_GEMINI_MS = 20000; // Gemini puede tardar mas, sobre todo si el servidor recien desperto
 
 // ---------------------------------------------------------------------
 // 1) Clima real (Open-Meteo, gratuito, sin llave)
@@ -214,7 +215,7 @@ async function llamarGemini(prompt) {
 
   const modelo = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const controlador = new AbortController();
-  const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_MS);
+  const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_GEMINI_MS);
 
   try {
     const respuesta = await fetch(
