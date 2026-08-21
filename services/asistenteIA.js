@@ -27,7 +27,7 @@ const { CIMA_VOLCAN_DE_AGUA, INFO_RUTA_VOLCAN_DE_AGUA } = require('./deteccionAn
 const { predecirRiesgoRecorrido } = require('./modeloRiesgoIA');
 
 const TIEMPO_LIMITE_MS = 6000; // clima (Open-Meteo es rapido)
-const TIEMPO_LIMITE_GEMINI_MS = 20000; // Gemini puede tardar mas, sobre todo si el servidor recien desperto
+const TIEMPO_LIMITE_GEMINI_MS = 45000; // Gemini puede tardar mas, sobre todo en el plan gratuito de Render
 
 // ---------------------------------------------------------------------
 // 1) Clima real (Open-Meteo, gratuito, sin llave)
@@ -216,6 +216,7 @@ async function llamarGemini(prompt) {
   const modelo = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const controlador = new AbortController();
   const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_GEMINI_MS);
+  const inicio = Date.now();
 
   try {
     const respuesta = await fetch(
@@ -228,13 +229,26 @@ async function llamarGemini(prompt) {
       }
     );
 
-    if (!respuesta.ok) throw new Error(`Gemini respondio ${respuesta.status}`);
+    if (!respuesta.ok) {
+      const cuerpoError = await respuesta.text().catch(() => '');
+      throw new Error(`Gemini respondio ${respuesta.status}: ${cuerpoError.slice(0, 300)}`);
+    }
 
     const datos = await respuesta.json();
     const texto = datos.candidates?.[0]?.content?.parts?.[0]?.text;
+    const bloqueado = datos.promptFeedback?.blockReason;
+    if (!texto && bloqueado) {
+      console.warn('[Asistente IA] Gemini bloqueo la respuesta:', bloqueado);
+    }
     return texto ? texto.trim() : null;
   } catch (error) {
-    console.warn('[Asistente IA] Llamada a Gemini fallo:', error.message);
+    const transcurridoMs = Date.now() - inicio;
+    const fueTimeout = error.name === 'AbortError';
+    console.warn(
+      `[Asistente IA] Llamada a Gemini fallo tras ${transcurridoMs}ms` +
+      (fueTimeout ? ' (se agoto el tiempo de espera de ' + TIEMPO_LIMITE_GEMINI_MS + 'ms)' : '') +
+      `: ${error.message}`
+    );
     return null;
   } finally {
     clearTimeout(timeout);
