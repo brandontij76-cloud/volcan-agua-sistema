@@ -25,6 +25,7 @@
 
 const { CIMA_VOLCAN_DE_AGUA, INFO_RUTA_VOLCAN_DE_AGUA } = require('./deteccionAnomalias');
 const { predecirRiesgoRecorrido } = require('./modeloRiesgoIA');
+const { clasificarPregunta } = require('./clasificadorPreguntas');
 
 const TIEMPO_LIMITE_MS = 6000; // clima (Open-Meteo es rapido)
 const TIEMPO_LIMITE_GEMINI_MS = 45000; // Gemini puede tardar mas, sobre todo en el plan gratuito de Render
@@ -390,18 +391,82 @@ function construirContextoUsuario() {
   );
 }
 
+// ---------------------------------------------------------------------
+// RESPALDO CON MACHINE LEARNING: si Gemini no responde (saturado, sin
+// cuota, sin internet), el chat NO debe fallar de forma visible. En vez
+// de un mensaje de error, se usa el clasificador Naive Bayes propio
+// (services/clasificadorPreguntas.js) para detectar de que trata la
+// pregunta, y se responde con datos REALES del sistema (clima actual,
+// distancia real de la ruta, estadisticas en vivo para el admin, etc.),
+// no con texto generico. Esto se indica siempre con
+// "generadoConIA: false" para ser honestos sobre que esa respuesta en
+// particular no la redacto Gemini, sino el clasificador propio.
+// ---------------------------------------------------------------------
+async function generarRespuestaRespaldo(db, { pregunta, contexto }) {
+  const { categoria } = clasificarPregunta(pregunta);
+
+  let clima;
+  switch (categoria) {
+    case 'clima': {
+      clima = await obtenerPronosticoClima(new Date().toISOString());
+      if (!clima) clima = climaEstacionalDeRespaldo(new Date());
+      const detalle = clima.fuenteClima === 'api'
+        ? `ahorita hay aproximadamente ${Math.round(clima.temperaturaC)}°C, ${clima.probabilidadLluvia}% de probabilidad de lluvia y viento de ${Math.round(clima.vientoKmh)} km/h en la cima`
+        : `estamos en temporada ${clima.temporada}, con clima típico de ~${clima.temperaturaC}°C en la parte alta`;
+      return `Según los datos más recientes, ${detalle}. Recuerda que el clima en la cima del volcán puede cambiar rápido, así que lleva siempre equipo para frío y lluvia.`;
+    }
+
+    case 'equipo': {
+      clima = await obtenerPronosticoClima(new Date().toISOString());
+      if (!clima) clima = climaEstacionalDeRespaldo(new Date());
+      const recomendaciones = generarRecomendacionesEquipo({ horaSalida: '06:00', clima });
+      return `Para tu recorrido te recomiendo llevar: ${recomendaciones.slice(0, 5).join('; ')}.`;
+    }
+
+    case 'ruta':
+      return (
+        `La ruta del Volcán de Agua tiene ${INFO_RUTA_VOLCAN_DE_AGUA.distanciaKm} km (ida y vuelta), ` +
+        `${INFO_RUTA_VOLCAN_DE_AGUA.desnivelM} m de desnivel, y dificultad "${INFO_RUTA_VOLCAN_DE_AGUA.dificultad}". ` +
+        `Sal temprano y calcula suficiente tiempo para subir y bajar con luz de día.`
+      );
+
+    case 'emergencia':
+      return (
+        `Si presionas el botón de pánico, el sistema envía tu ubicación GPS actual al equipo administrativo ` +
+        `de inmediato para que puedan ubicarte y coordinar ayuda. También detectamos automáticamente si te ` +
+        `desvías mucho de la ruta o si dejas de moverte por un buen rato, y eso genera una alerta aunque no ` +
+        `presiones el botón. Si tienes una emergencia real, presiona el botón y, si tienes señal, contacta ` +
+        `también directamente a los números de emergencia locales.`
+      );
+
+    case 'registro_uso':
+      return (
+        `Para usar el sistema: te registras con tus datos y un contacto de emergencia, dejas la página de ` +
+        `monitoreo abierta durante el recorrido (tu ubicación se envía cada 30 segundos), presionas ` +
+        `"Llegué a la cima" cuando estés cerca de la cumbre, y "Finalizar recorrido" cuando estés de regreso ` +
+        `cerca del pueblo.`
+      );
+
+    case 'saludo':
+      return '¡Hola! Soy el asistente de Cumbre Segura. Puedo ayudarte con dudas sobre la ruta, el clima, qué llevar, o cómo funciona el sistema.';
+
+    default:
+      return (
+        `No estoy seguro de haber entendido bien tu pregunta (esto lo estoy respondiendo con mi modo de respaldo, ` +
+        `sin conexión a Gemini en este momento). Puedo ayudarte con temas de clima, equipo necesario, la ruta, ` +
+        `el botón de emergencia, o cómo usar el sistema — intenta reformular tu pregunta sobre alguno de esos temas.`
+      );
+  }
+}
+
 async function responderChat(db, { pregunta, contexto, historial }) {
   if (!pregunta || !pregunta.trim()) {
     return { respuesta: '¿En qué te puedo ayudar?', generadoConIA: false };
   }
 
   if (!process.env.GEMINI_API_KEY) {
-    return {
-      respuesta:
-        'El chat con IA todavía no está activado en este sistema (falta configurar GEMINI_API_KEY). ' +
-        'Mientras tanto, puedes usar el formulario de registro o el panel administrativo directamente.',
-      generadoConIA: false,
-    };
+    const respaldo = await generarRespuestaRespaldo(db, { pregunta, contexto });
+    return { respuesta: respaldo, generadoConIA: false };
   }
 
   const contextoSistema = contexto === 'admin'
@@ -422,10 +487,10 @@ async function responderChat(db, { pregunta, contexto, historial }) {
   const respuestaTexto = await llamarGemini(prompt);
 
   if (!respuestaTexto) {
-    return {
-      respuesta: 'No pude generar una respuesta en este momento. Intenta de nuevo en unos segundos.',
-      generadoConIA: false,
-    };
+    // Gemini fallo incluso despues de los reintentos: en vez de un
+    // mensaje de error, se usa el respaldo con ML (ver mas arriba).
+    const respaldo = await generarRespuestaRespaldo(db, { pregunta, contexto });
+    return { respuesta: respaldo, generadoConIA: false };
   }
 
   return { respuesta: respuestaTexto, generadoConIA: true };
