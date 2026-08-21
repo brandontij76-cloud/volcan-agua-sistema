@@ -205,54 +205,85 @@ async function calcularEstadisticasHistoricas(db, horaSalida) {
   }
 }
 
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Codigos de error que sabemos que son temporales del lado de Google
+// (modelo saturado por demanda, o limite de uso momentaneo). Vale la
+// pena reintentar. Otros errores (clave invalida, prompt bloqueado,
+// modelo inexistente) no se arreglan reintentando.
+const CODIGOS_REINTENTABLES = new Set([503, 429]);
+const MAX_REINTENTOS_GEMINI = 2;
+
 // ---------------------------------------------------------------------
 // Funcion base: manda un prompt de texto a Gemini y regresa la respuesta.
-// La reutilizan tanto el resumen automatico como el chatbot.
+// La reutilizan tanto el resumen automatico como el chatbot. Reintenta
+// automaticamente si Gemini responde que esta saturado (503) o con
+// limite de uso alcanzado (429), ya que Google mismo indica que esos
+// picos de demanda suelen ser temporales.
 // ---------------------------------------------------------------------
 async function llamarGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
   const modelo = process.env.GEMINI_MODEL || 'gemini-flash-latest';
-  const controlador = new AbortController();
-  const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_GEMINI_MS);
-  const inicio = Date.now();
 
-  try {
-    const respuesta = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        signal: controlador.signal,
+  for (let intento = 0; intento <= MAX_REINTENTOS_GEMINI; intento++) {
+    const controlador = new AbortController();
+    const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_GEMINI_MS);
+    const inicio = Date.now();
+
+    try {
+      const respuesta = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          signal: controlador.signal,
+        }
+      );
+
+      if (!respuesta.ok) {
+        const cuerpoError = await respuesta.text().catch(() => '');
+        const error = new Error(`Gemini respondio ${respuesta.status}: ${cuerpoError.slice(0, 300)}`);
+        error.codigoHttp = respuesta.status;
+        throw error;
       }
-    );
 
-    if (!respuesta.ok) {
-      const cuerpoError = await respuesta.text().catch(() => '');
-      throw new Error(`Gemini respondio ${respuesta.status}: ${cuerpoError.slice(0, 300)}`);
-    }
+      const datos = await respuesta.json();
+      const texto = datos.candidates?.[0]?.content?.parts?.[0]?.text;
+      const bloqueado = datos.promptFeedback?.blockReason;
+      if (!texto && bloqueado) {
+        console.warn('[Asistente IA] Gemini bloqueo la respuesta:', bloqueado);
+      }
+      return texto ? texto.trim() : null;
+    } catch (error) {
+      const transcurridoMs = Date.now() - inicio;
+      const fueTimeout = error.name === 'AbortError';
+      const esReintentable = CODIGOS_REINTENTABLES.has(error.codigoHttp);
+      const quedanIntentos = intento < MAX_REINTENTOS_GEMINI;
 
-    const datos = await respuesta.json();
-    const texto = datos.candidates?.[0]?.content?.parts?.[0]?.text;
-    const bloqueado = datos.promptFeedback?.blockReason;
-    if (!texto && bloqueado) {
-      console.warn('[Asistente IA] Gemini bloqueo la respuesta:', bloqueado);
+      console.warn(
+        `[Asistente IA] Llamada a Gemini fallo tras ${transcurridoMs}ms` +
+        (fueTimeout ? ' (se agoto el tiempo de espera de ' + TIEMPO_LIMITE_GEMINI_MS + 'ms)' : '') +
+        `: ${error.message}` +
+        (esReintentable && quedanIntentos ? ` -> reintentando (intento ${intento + 1}/${MAX_REINTENTOS_GEMINI})` : '')
+      );
+
+      if (esReintentable && quedanIntentos) {
+        await esperar(1500 * (intento + 1)); // espera creciente: 1.5s, luego 3s
+        continue;
+      }
+
+      return null;
+    } finally {
+      clearTimeout(timeout);
     }
-    return texto ? texto.trim() : null;
-  } catch (error) {
-    const transcurridoMs = Date.now() - inicio;
-    const fueTimeout = error.name === 'AbortError';
-    console.warn(
-      `[Asistente IA] Llamada a Gemini fallo tras ${transcurridoMs}ms` +
-      (fueTimeout ? ' (se agoto el tiempo de espera de ' + TIEMPO_LIMITE_GEMINI_MS + 'ms)' : '') +
-      `: ${error.message}`
-    );
-    return null;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------
