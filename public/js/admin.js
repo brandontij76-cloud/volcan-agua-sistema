@@ -125,8 +125,11 @@ function iniciarMapaAdmin() {
     .then((r) => r.json())
     .then((ruta) => {
       const puntos = ruta.map((p) => [p.lat, p.lng]);
-      L.polyline(puntos, { color: '#2f5233', weight: 4, dashArray: '6 6' }).addTo(mapaAdmin);
+      L.polyline(puntos, { color: '#2dd4bf', weight: 4, dashArray: '6 6' }).addTo(mapaAdmin);
     });
+
+  // Marcadores con nombre de los puntos clave del recorrido (Capilla, Mirador, Cima, etc.)
+  agregarPuntosReferencia(mapaAdmin);
 }
 
 async function cargarDatos() {

@@ -473,6 +473,20 @@ a:hover { color: var(--ambar); }
   border-top: 1px solid var(--border-soft);
   padding-top: 1rem;
 }
+
+/* ---------- Marcadores de puntos de referencia en el mapa ---------- */
+.marcador-punto-referencia-emoji {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--ambar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  box-shadow: var(--sombra-suave);
+}
 .ficha-ruta-icono {
   text-align: center;
   min-width: 80px;

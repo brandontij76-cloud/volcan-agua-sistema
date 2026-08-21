@@ -101,3 +101,44 @@ async function iniciarFichaRuta(idContenedor) {
     console.error('Error al cargar ficha de ruta:', error);
   }
 }
+
+// Elige un icono/emoji segun el nombre del punto de referencia, para que se
+// distingan de un vistazo en el mapa (capilla, mirador, tramos, cima, etc.).
+function iconoParaPuntoReferencia(nombre) {
+  const texto = nombre.toUpperCase();
+  if (texto.includes('CIMA')) return '🏔️';
+  if (texto.includes('CAPILLA')) return '⛪';
+  if (texto.includes('VEHICULAR')) return '🚗';
+  if (texto.includes('MIRADOR')) return '📷';
+  if (texto.includes('ZIG ZAG')) return '🥾';
+  if (texto.includes('PRECAUCION') || texto.includes('PRECAUCIÓN') || texto.includes('MAL PASO')) return '⚠️';
+  if (texto === 'INICIO') return '🚩';
+  return '📍';
+}
+
+/**
+ * Agrega marcadores con nombre (Capilla, Mirador, Cima, etc.) al mapa Leaflet
+ * indicado, para que sirvan de referencia visual del recorrido.
+ * @param {L.Map} mapa - instancia de mapa Leaflet ya inicializada
+ */
+async function agregarPuntosReferencia(mapa) {
+  try {
+    const respuesta = await fetch('/api/puntos-referencia');
+    const puntos = await respuesta.json();
+
+    puntos.forEach((punto) => {
+      const icono = L.divIcon({
+        className: 'marcador-punto-referencia',
+        html: `<div class="marcador-punto-referencia-emoji">${iconoParaPuntoReferencia(punto.nombre)}</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      L.marker([punto.lat, punto.lng], { icon: icono })
+        .addTo(mapa)
+        .bindTooltip(punto.nombre, { direction: 'top', offset: [0, -12] });
+    });
+  } catch (error) {
+    console.error('No se pudieron cargar los puntos de referencia:', error);
+  }
+}

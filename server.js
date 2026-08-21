@@ -9,7 +9,7 @@ const path = require('path');
 const excursionistasRoutes = require('./routes/excursionistas');
 const alertasRoutes = require('./routes/alertas');
 const asistenteRoutes = require('./routes/asistente');
-const { RUTA_REFERENCIA_VOLCAN_DE_AGUA } = require('./services/deteccionAnomalias');
+const { RUTA_REFERENCIA_VOLCAN_DE_AGUA, PUNTOS_REFERENCIA_RUTA } = require('./services/deteccionAnomalias');
 const { ejecutarLimpiezaDatos, RETENCION_MAXIMA_DIAS } = require('./services/limpiezaDatos');
 const { db, firebaseConfigurado } = require('./config/firebase');
 
@@ -28,6 +28,12 @@ app.use('/api/asistente', asistenteRoutes);
 // Ruta de referencia del sendero, usada por el mapa para dibujar el camino.
 app.get('/api/ruta-referencia', (req, res) => {
   res.json(RUTA_REFERENCIA_VOLCAN_DE_AGUA);
+});
+
+// Puntos con nombre a lo largo de la ruta (Capilla, Mirador, Cima, etc.),
+// usados por el mapa para mostrar marcadores de referencia.
+app.get('/api/puntos-referencia', (req, res) => {
+  res.json(PUNTOS_REFERENCIA_RUTA);
 });
 
 // Login simple del panel administrativo (compara contra ADMIN_PASSWORD del .env).

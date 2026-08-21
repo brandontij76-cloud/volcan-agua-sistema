@@ -32,9 +32,12 @@ function iniciarMapa(latInicial, lngInicial) {
     .then((r) => r.json())
     .then((ruta) => {
       const puntos = ruta.map((p) => [p.lat, p.lng]);
-      L.polyline(puntos, { color: '#2f5233', weight: 4, dashArray: '6 6' }).addTo(mapa);
+      L.polyline(puntos, { color: '#2dd4bf', weight: 4, dashArray: '6 6' }).addTo(mapa);
     })
     .catch(() => { /* si falla, el mapa igual funciona sin la linea de ruta */ });
+
+  // Marcadores con nombre de los puntos clave del recorrido (Capilla, Mirador, Cima, etc.)
+  agregarPuntosReferencia(mapa);
 }
 
 function actualizarMarcador(lat, lng) {
