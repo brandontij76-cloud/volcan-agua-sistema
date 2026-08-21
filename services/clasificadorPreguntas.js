@@ -140,6 +140,10 @@ const PALABRAS_VACIAS = new Set([
   'yo', 'tu', 'el', 'ella', 'nosotros', 'ustedes', 'ellos', 'mi', 'me',
   'se', 'lo', 'le', 'les', 'su', 'sus', 'y', 'o', 'a', 'en', 'por', 'para',
   'con', 'sin', 'si', 'no', 'pero', 'mas', 'muy', 'este', 'esta', 'eso',
+  // Palabras temporales genericas: no distinguen de que categoria trata
+  // la pregunta (aparecen por casualidad en ejemplos de clima como
+  // "llovera hoy", pero no son la palabra que realmente indica el tema).
+  'hoy', 'ahora', 'ahorita', 'dia', 'manana',
 ]);
 
 function tokenizar(texto) {
