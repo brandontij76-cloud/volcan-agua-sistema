@@ -244,6 +244,7 @@ const RUTA_REFERENCIA_VOLCAN_DE_AGUA = [
 const PUNTOS_REFERENCIA_RUTA = [
   { nombre: 'BIENVENIDO A LA CIMA DEL VOLCÁN DE AGUA', lat: 14.467115, lng: -90.741359 },
   { nombre: 'INICIO DEL ZIG ZAG', lat: 14.471600, lng: -90.741035 },
+  { nombre: 'INICIO DE TRAMO MAL PASO. PRECAUCIÓN.', lat: 14.472203, lng: -90.736093 },
   { nombre: 'MIRADOR CANAL 3', lat: 14.476659, lng: -90.726922 },
   { nombre: 'CAPILLA', lat: 14.488624, lng: -90.717014 },
   { nombre: 'INICIO', lat: 14.490476, lng: -90.714806 },
