@@ -4,6 +4,8 @@
 
 const INTERVALO_ACTUALIZACION_MS = 15000;
 let mapaAdmin, capaMarcadores;
+let mapaTiempoReal, capaMarcadoresTiempoReal;
+let pestanasIniciadas = { tiemporeal: false, estadisticas: false, agencias: false, colaboradores: false };
 
 // --- Login ---
 function sesionActiva() {
@@ -61,6 +63,327 @@ function iniciarPanel() {
     cargarDatos();
     cargarEstadoModelo();
   });
+
+  iniciarPestanas();
+}
+
+// --- Pestañas: Tiempo real / Estadísticas / Agencias / Colaboradores ---
+// Cada pestaña se inicializa la primera vez que se abre (asi no se crean
+// mapas ocultos, que Leaflet no dibuja bien con contenedor en d-none).
+function iniciarPestanas() {
+  document.getElementById('tab-btn-tiemporeal').addEventListener('shown.bs.tab', () => {
+    if (!pestanasIniciadas.tiemporeal) {
+      iniciarMapaTiempoReal();
+      pestanasIniciadas.tiemporeal = true;
+    }
+    cargarTiempoReal();
+  });
+
+  document.getElementById('tab-btn-estadisticas').addEventListener('shown.bs.tab', () => {
+    cargarEstadisticas();
+  });
+  document.getElementById('btnActualizarEstadisticas').addEventListener('click', cargarEstadisticas);
+
+  document.getElementById('tab-btn-agencias').addEventListener('shown.bs.tab', () => {
+    if (!pestanasIniciadas.agencias) {
+      cargarAgencias();
+      pestanasIniciadas.agencias = true;
+    }
+  });
+  document.getElementById('btnCrearAgencia').addEventListener('click', crearAgencia);
+
+  document.getElementById('tab-btn-colaboradores').addEventListener('shown.bs.tab', () => {
+    if (!pestanasIniciadas.colaboradores) {
+      cargarColaboradores();
+      pestanasIniciadas.colaboradores = true;
+    }
+  });
+  document.getElementById('btnCrearColaborador').addEventListener('click', crearColaborador);
+
+  // Refresca el mapa de tiempo real junto con el resto de datos, solo si
+  // la pestaña ya fue abierta al menos una vez (para no gastar llamadas
+  // de mas si el administrador nunca la usa).
+  setInterval(() => {
+    if (pestanasIniciadas.tiemporeal) cargarTiempoReal();
+  }, INTERVALO_ACTUALIZACION_MS);
+}
+
+// --- Tiempo real: mapa tipo "Google Maps" con icono de persona caminando ---
+function iniciarMapaTiempoReal() {
+  mapaTiempoReal = L.map('mapa-tiemporeal').setView([14.4650, -90.7350], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(mapaTiempoReal);
+  capaMarcadoresTiempoReal = L.layerGroup().addTo(mapaTiempoReal);
+
+  fetch('/api/ruta-referencia')
+    .then((r) => r.json())
+    .then((ruta) => {
+      const puntos = ruta.map((p) => [p.lat, p.lng]);
+      L.polyline(puntos, { color: '#2dd4bf', weight: 4, dashArray: '6 6' }).addTo(mapaTiempoReal);
+    });
+
+  agregarPuntosReferencia(mapaTiempoReal);
+}
+
+async function cargarTiempoReal() {
+  if (!mapaTiempoReal) return;
+  try {
+    const respuesta = await fetch('/api/excursionistas?estado=activo');
+    const activos = await respuesta.json();
+
+    document.getElementById('contadorEnRuta').textContent = activos.length;
+
+    capaMarcadoresTiempoReal.clearLayers();
+    activos
+      .filter((e) => e.ubicacionActual)
+      .forEach((e) => {
+        const etiqueta = e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre;
+        const icono = L.divIcon({
+          className: '',
+          html: `
+            <div class="marcador-excursionista">
+              <div class="etiqueta-nombre">${escaparHtml(etiqueta)}</div>
+              <div class="icono-caminando">🚶</div>
+            </div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [12, 12],
+        });
+        const marcador = L.marker([e.ubicacionActual.lat, e.ubicacionActual.lng], { icon: icono })
+          .bindPopup(`<strong>${escaparHtml(e.nombre)}</strong><br>Grupo de ${e.personasGrupo || 1}`);
+        capaMarcadoresTiempoReal.addLayer(marcador);
+      });
+  } catch (error) {
+    console.error('Error al cargar el mapa de tiempo real:', error);
+  }
+}
+
+// --- Estadísticas semanales ---
+async function cargarEstadisticas() {
+  const contenedor = document.getElementById('contenedorEstadisticas');
+  contenedor.innerHTML = '<p class="text-muted">Cargando estadísticas…</p>';
+  try {
+    const respuesta = await fetch('/api/admin/estadisticas');
+    const r = await respuesta.json();
+
+    const filasAtencion = (r.detalleAtencion || []).length
+      ? r.detalleAtencion.map((a) => `
+          <tr>
+            <td>${escaparHtml(a.excursionista || '-')}</td>
+            <td><span class="badge badge-nivel-${a.nivel || 'leve'}">${a.nivel || '-'}</span></td>
+            <td>${escaparHtml(a.atendidaPor || 'No especificado')}</td>
+            <td>${a.fechaAtencion ? new Date(a.fechaAtencion).toLocaleString('es-GT') : '-'}</td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="4" class="text-muted text-center">Sin alertas atendidas esta semana.</td></tr>';
+
+    contenedor.innerHTML = `
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="stat-card">
+            <div class="stat-numero">${r.totalRegistrados}</div>
+            <div class="stat-label">Registrados</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="stat-card">
+            <div class="stat-numero" style="color:var(--lavanda)">${r.cimaAlcanzada}</div>
+            <div class="stat-label">Llegaron a la cima</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="stat-numero">${r.finalizados}</div>
+          <div class="stat-label">Finalizaron</div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="stat-card">
+            <div class="stat-numero" style="color:var(--alerta-moderada)">${r.sinTerminarODesviados}</div>
+            <div class="stat-label">Sin terminar / en ruta</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="stat-card">
+            <div class="stat-numero" style="color:var(--alerta-grave)">${r.alertasSinAtender}</div>
+            <div class="stat-label">Alertas sin atender</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <div class="stat-card">
+            <div class="stat-numero" style="color:var(--exito)">${r.alertasAtendidas}</div>
+            <div class="stat-label">Alertas atendidas</div>
+          </div>
+        </div>
+      </div>
+
+      <h6 class="mb-3">Emergencias atendidas esta semana — quién las atendió</h6>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Excursionista</th>
+              <th>Nivel</th>
+              <th>Atendida por</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>${filasAtencion}</tbody>
+        </table>
+      </div>
+      <p class="text-muted small mt-2">
+        Resumen calculado sobre los últimos 7 días. Usa "Descargar Excel" en la pestaña Resumen
+        para el detalle completo agrupado por agencia.
+      </p>
+    `;
+  } catch (error) {
+    console.error('Error al cargar estadisticas:', error);
+    contenedor.innerHTML = '<p class="text-danger">No se pudieron cargar las estadísticas.</p>';
+  }
+}
+
+// --- Agencias turísticas ---
+async function cargarAgencias() {
+  const cuerpo = document.getElementById('tablaAgencias');
+  try {
+    const respuesta = await fetch('/api/agencias');
+    const lista = await respuesta.json();
+
+    cuerpo.innerHTML = '';
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Aún no hay agencias registradas.</td></tr>';
+      return;
+    }
+    lista.forEach((a) => {
+      const fila = document.createElement('tr');
+      fila.innerHTML = `
+        <td>${escaparHtml(a.nombre)}</td>
+        <td>${escaparHtml(a.representante || '-')}</td>
+        <td>${escaparHtml(a.telefono || '-')}</td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarAgencia('${a.id}')">Eliminar</button></td>
+      `;
+      cuerpo.appendChild(fila);
+    });
+  } catch (error) {
+    console.error('Error al cargar agencias:', error);
+    cuerpo.innerHTML = '<tr><td colspan="4" class="text-danger text-center">No se pudieron cargar las agencias.</td></tr>';
+  }
+}
+
+async function crearAgencia() {
+  const nombre = document.getElementById('inputAgenciaNombre').value.trim();
+  const representante = document.getElementById('inputAgenciaRepresentante').value.trim();
+  const telefono = document.getElementById('inputAgenciaTelefono').value.trim();
+  const errorBox = document.getElementById('errorAgencia');
+  errorBox.classList.add('d-none');
+
+  try {
+    const respuesta = await fetch('/api/agencias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, representante, telefono }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo registrar la agencia.');
+
+    document.getElementById('inputAgenciaNombre').value = '';
+    document.getElementById('inputAgenciaRepresentante').value = '';
+    document.getElementById('inputAgenciaTelefono').value = '';
+    cargarAgencias();
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('d-none');
+  }
+}
+
+async function eliminarAgencia(id) {
+  const confirmar = confirm('¿Eliminar esta agencia? Los excursionistas ya asociados no se eliminan.');
+  if (!confirmar) return;
+  await fetch(`/api/agencias/${id}`, { method: 'DELETE' });
+  cargarAgencias();
+}
+
+// --- Colaboradores (acceso limitado a Tiempo real) ---
+async function cargarColaboradores() {
+  const cuerpo = document.getElementById('tablaColaboradores');
+  try {
+    const respuesta = await fetch('/api/colaboradores');
+    const lista = await respuesta.json();
+
+    cuerpo.innerHTML = '';
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Aún no hay colaboradores registrados.</td></tr>';
+      return;
+    }
+    lista.forEach((c) => {
+      const accesos = Object.values(c.historialAccesos || {})
+        .sort((a, b) => b.fecha - a.fecha)
+        .slice(0, 3)
+        .map((acc) => new Date(acc.fecha).toLocaleString('es-GT'))
+        .join('<br>') || '<span class="text-muted">Sin accesos aún</span>';
+
+      const fila = document.createElement('tr');
+      fila.innerHTML = `
+        <td>${escaparHtml(c.nombre)}</td>
+        <td>${escaparHtml(c.usuario)}</td>
+        <td>
+          <span class="badge ${c.activo ? 'bg-success' : 'bg-secondary'}">${c.activo ? 'Activo' : 'Desactivado'}</span>
+        </td>
+        <td class="small">${accesos}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary mb-1" onclick="cambiarEstadoColaborador('${c.id}', ${!c.activo})">
+            ${c.activo ? 'Desactivar' : 'Activar'}
+          </button>
+          <button class="btn btn-sm btn-outline-danger mb-1" onclick="eliminarColaborador('${c.id}')">Eliminar</button>
+        </td>
+      `;
+      cuerpo.appendChild(fila);
+    });
+  } catch (error) {
+    console.error('Error al cargar colaboradores:', error);
+    cuerpo.innerHTML = '<tr><td colspan="5" class="text-danger text-center">No se pudieron cargar los colaboradores.</td></tr>';
+  }
+}
+
+async function crearColaborador() {
+  const nombre = document.getElementById('inputColaboradorNombre').value.trim();
+  const usuario = document.getElementById('inputColaboradorUsuario').value.trim();
+  const password = document.getElementById('inputColaboradorPassword').value;
+  const errorBox = document.getElementById('errorColaborador');
+  errorBox.classList.add('d-none');
+
+  try {
+    const respuesta = await fetch('/api/colaboradores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, usuario, password }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo crear el colaborador.');
+
+    document.getElementById('inputColaboradorNombre').value = '';
+    document.getElementById('inputColaboradorUsuario').value = '';
+    document.getElementById('inputColaboradorPassword').value = '';
+    cargarColaboradores();
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('d-none');
+  }
+}
+
+async function cambiarEstadoColaborador(id, activo) {
+  await fetch(`/api/colaboradores/${id}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activo }),
+  });
+  cargarColaboradores();
+}
+
+async function eliminarColaborador(id) {
+  const confirmar = confirm('¿Eliminar esta cuenta de colaborador? Ya no podrá iniciar sesión.');
+  if (!confirmar) return;
+  await fetch(`/api/colaboradores/${id}`, { method: 'DELETE' });
+  cargarColaboradores();
 }
 
 async function cargarEstadoModelo() {
@@ -237,7 +560,7 @@ async function cargarAlertas() {
         <td>${hora}</td>
         <td>
           ${a.atendida
-            ? '<span class="text-muted small">Atendida</span>'
+            ? `<span class="text-muted small">Atendida por ${escaparHtml(a.atendidaPor || 'No especificado')}</span>`
             : `<button class="btn btn-sm btn-volcan" onclick="atenderAlerta('${a.id}')">Atender</button>`
           }
         </td>
@@ -250,7 +573,13 @@ async function cargarAlertas() {
 }
 
 async function atenderAlerta(id) {
-  await fetch(`/api/alertas/${id}/atender`, { method: 'PATCH' });
+  const atendidaPor = prompt('¿Quién está atendiendo esta alerta? Escribe tu nombre:');
+  if (!atendidaPor || !atendidaPor.trim()) return;
+  await fetch(`/api/alertas/${id}/atender`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ atendidaPor: atendidaPor.trim() }),
+  });
   cargarAlertas();
 }
 

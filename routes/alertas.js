@@ -62,15 +62,22 @@ router.get('/', async (req, res) => {
 });
 
 // PATCH /api/alertas/:id/atender
-// El administrador marca una alerta como atendida.
+// Se marca una alerta como atendida. atendidaPor es el nombre de quien la
+// atendio (administrador o colaborador en la cima), para dejar trazabilidad
+// de quien respondio a cada emergencia.
 router.patch('/:id/atender', async (req, res) => {
   try {
+    const { atendidaPor } = req.body;
     const ref = db.ref(`alertas/${req.params.id}`);
     const snapshot = await ref.once('value');
     if (!snapshot.exists()) {
       return res.status(404).json({ error: 'Alerta no encontrada.' });
     }
-    await ref.update({ atendida: true, fechaAtencion: Date.now() });
+    await ref.update({
+      atendida: true,
+      fechaAtencion: Date.now(),
+      atendidaPor: atendidaPor || 'No especificado',
+    });
     res.json({ mensaje: 'Alerta marcada como atendida.' });
   } catch (error) {
     console.error('Error al atender alerta:', error);

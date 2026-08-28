@@ -66,55 +66,196 @@
 
     <div id="estadoModeloIA" class="mb-4"></div>
 
-    <div class="row g-3">
-      <div class="col-lg-7">
-        <h5 class="mb-3">Mapa de excursionistas activos</h5>
-        <div id="mapa-admin"></div>
-      </div>
+    <!-- Navegacion por pestanas -->
+    <ul class="nav nav-tabs mb-4" id="pestanasAdmin" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-btn-resumen" data-bs-toggle="tab" data-bs-target="#tab-resumen" type="button" role="tab">Resumen</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-btn-tiemporeal" data-bs-toggle="tab" data-bs-target="#tab-tiemporeal" type="button" role="tab">Tiempo real</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-btn-estadisticas" data-bs-toggle="tab" data-bs-target="#tab-estadisticas" type="button" role="tab">Estadísticas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-btn-agencias" data-bs-toggle="tab" data-bs-target="#tab-agencias" type="button" role="tab">Agencias turísticas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-btn-colaboradores" data-bs-toggle="tab" data-bs-target="#tab-colaboradores" type="button" role="tab">Colaboradores</button>
+      </li>
+    </ul>
 
-      <div class="col-lg-5">
-        <h5 class="mb-3">Alertas</h5>
-        <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
-          <table class="table table-sm align-middle">
+    <div class="tab-content" id="contenidoPestanasAdmin">
+
+      <!-- ============ PESTAÑA: RESUMEN (vista original) ============ -->
+      <div class="tab-pane fade show active" id="tab-resumen" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <h5 class="mb-3">Mapa de excursionistas activos</h5>
+            <div id="mapa-admin"></div>
+          </div>
+
+          <div class="col-lg-5">
+            <h5 class="mb-3">Alertas</h5>
+            <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Excursionista</th>
+                    <th>Nivel</th>
+                    <th>Detalle</th>
+                    <th>Hora</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tablaAlertas">
+                  <tr><td colspan="5" class="text-muted text-center">Sin alertas por el momento.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h5 class="mb-0">Excursionistas</h5>
+          <a class="btn btn-sm btn-volcan" href="/api/admin/exportar" id="btnExportarExcel">⬇️ Descargar Excel (agrupado por agencia)</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table">
             <thead>
               <tr>
-                <th>Excursionista</th>
-                <th>Nivel</th>
-                <th>Detalle</th>
-                <th>Hora</th>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Contacto de emergencia</th>
+                <th>Personas</th>
+                <th>Estado</th>
+                <th>Cima</th>
+                <th>Retorno</th>
+                <th>Última ubicación</th>
                 <th></th>
               </tr>
             </thead>
-            <tbody id="tablaAlertas">
-              <tr><td colspan="5" class="text-muted text-center">Sin alertas por el momento.</td></tr>
+            <tbody id="tablaExcursionistas">
+              <tr><td colspan="9" class="text-muted text-center">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
       </div>
-    </div>
 
-    <hr class="my-4">
+      <!-- ============ PESTAÑA: TIEMPO REAL ============ -->
+      <div class="tab-pane fade" id="tab-tiemporeal" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h5 class="mb-0">Quién está subiendo en tiempo real</h5>
+          <span class="text-muted small">Se actualiza cada 15s · <span id="contadorEnRuta">0</span> en ruta ahora</span>
+        </div>
+        <div id="mapa-tiemporeal"></div>
+      </div>
 
-    <h5 class="mb-3">Excursionistas</h5>
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Teléfono</th>
-            <th>Contacto de emergencia</th>
-            <th>Personas</th>
-            <th>Estado</th>
-            <th>Cima</th>
-            <th>Retorno</th>
-            <th>Última ubicación</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tablaExcursionistas">
-          <tr><td colspan="9" class="text-muted text-center">Cargando…</td></tr>
-        </tbody>
-      </table>
+      <!-- ============ PESTAÑA: ESTADISTICAS ============ -->
+      <div class="tab-pane fade" id="tab-estadisticas" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h5 class="mb-0">Resumen de la última semana</h5>
+          <button class="btn btn-sm btn-outline-secondary" id="btnActualizarEstadisticas">Actualizar</button>
+        </div>
+        <div id="contenedorEstadisticas">
+          <p class="text-muted">Cargando estadísticas…</p>
+        </div>
+      </div>
+
+      <!-- ============ PESTAÑA: AGENCIAS ============ -->
+      <div class="tab-pane fade" id="tab-agencias" role="tabpanel">
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <h5 class="mb-3">Registrar agencia</h5>
+            <div class="card p-3">
+              <div class="mb-2">
+                <label class="form-label">Nombre de la agencia</label>
+                <input type="text" class="form-control" id="inputAgenciaNombre">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Representante</label>
+                <input type="text" class="form-control" id="inputAgenciaRepresentante">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Teléfono</label>
+                <input type="text" class="form-control" id="inputAgenciaTelefono">
+              </div>
+              <div id="errorAgencia" class="alert alert-danger d-none py-2 my-2"></div>
+              <button class="btn btn-volcan mt-2" id="btnCrearAgencia">Registrar agencia</button>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <h5 class="mb-3">Agencias registradas</h5>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Agencia</th>
+                    <th>Representante</th>
+                    <th>Teléfono</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tablaAgencias">
+                  <tr><td colspan="4" class="text-muted text-center">Cargando…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PESTAÑA: COLABORADORES ============ -->
+      <div class="tab-pane fade" id="tab-colaboradores" role="tabpanel">
+        <p class="text-muted small">
+          Cuentas para las personas en la cima que atienden a los excursionistas. Cada una tiene acceso
+          únicamente a la pestaña de "Tiempo real" (no ven el resto del panel administrativo) desde
+          <a href="colaborador.html" target="_blank">colaborador.html</a>.
+        </p>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <h5 class="mb-3">Crear colaborador</h5>
+            <div class="card p-3">
+              <div class="mb-2">
+                <label class="form-label">Nombre</label>
+                <input type="text" class="form-control" id="inputColaboradorNombre">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Usuario (correo o teléfono)</label>
+                <input type="text" class="form-control" id="inputColaboradorUsuario">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Contraseña</label>
+                <input type="text" class="form-control" id="inputColaboradorPassword">
+              </div>
+              <div id="errorColaborador" class="alert alert-danger d-none py-2 my-2"></div>
+              <button class="btn btn-volcan mt-2" id="btnCrearColaborador">Crear cuenta</button>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <h5 class="mb-3">Colaboradores y su historial de accesos</h5>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Usuario</th>
+                    <th>Estado</th>
+                    <th>Últimos accesos</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tablaColaboradores">
+                  <tr><td colspan="5" class="text-muted text-center">Cargando…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 

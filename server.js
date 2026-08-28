@@ -9,6 +9,9 @@ const path = require('path');
 const excursionistasRoutes = require('./routes/excursionistas');
 const alertasRoutes = require('./routes/alertas');
 const asistenteRoutes = require('./routes/asistente');
+const colaboradoresRoutes = require('./routes/colaboradores');
+const agenciasRoutes = require('./routes/agencias');
+const adminExtraRoutes = require('./routes/adminExtra');
 const { RUTA_REFERENCIA_VOLCAN_DE_AGUA, PUNTOS_REFERENCIA_RUTA } = require('./services/deteccionAnomalias');
 const { ejecutarLimpiezaDatos, RETENCION_MAXIMA_DIAS } = require('./services/limpiezaDatos');
 const { db, firebaseConfigurado } = require('./config/firebase');
@@ -24,6 +27,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/excursionistas', excursionistasRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/asistente', asistenteRoutes);
+app.use('/api/colaboradores', colaboradoresRoutes);
+app.use('/api/agencias', agenciasRoutes);
 
 // Ruta de referencia del sendero, usada por el mapa para dibujar el camino.
 app.get('/api/ruta-referencia', (req, res) => {
@@ -47,6 +52,10 @@ app.post('/api/admin/login', (req, res) => {
   }
   res.status(401).json({ ok: false, error: 'Contrasena incorrecta.' });
 });
+
+// Estadisticas semanales y exportacion a Excel (montado despues del login
+// de arriba para que /api/admin/login siempre lo maneje la ruta especifica).
+app.use('/api/admin', adminExtraRoutes);
 
 // Cualquier ruta no reconocida de la API responde 404 en formato JSON.
 app.use('/api', (req, res) => {

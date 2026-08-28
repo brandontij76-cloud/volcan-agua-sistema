@@ -2,11 +2,114 @@
 // Envia el formulario de registro al backend y, si todo sale bien,
 // redirige al excursionista a la pantalla de monitoreo con su id.
 
+// ---------------------------------------------------------------------
+// GPS obligatorio: no se puede registrar sin activar la ubicacion.
+// ---------------------------------------------------------------------
+let ubicacionRegistro = null; // { lat, lng } una vez que el navegador la entregue
+
+function actualizarEstadoGps(estado, mensaje) {
+  const caja = document.getElementById('cajaGps');
+  const texto = document.getElementById('mensajeGps');
+  const btn = document.getElementById('btnActivarGps');
+  const btnRegistrar = document.getElementById('btnRegistrar');
+
+  texto.textContent = mensaje;
+  caja.classList.remove('alert-warning', 'alert-success', 'alert-danger');
+
+  if (estado === 'ok') {
+    caja.classList.add('alert-success');
+    btn.classList.add('d-none');
+    btnRegistrar.disabled = false;
+  } else if (estado === 'error') {
+    caja.classList.add('alert-danger');
+    btn.classList.remove('d-none');
+    btnRegistrar.disabled = true;
+  } else {
+    caja.classList.add('alert-warning');
+    btn.classList.add('d-none');
+    btnRegistrar.disabled = true;
+  }
+}
+
+function solicitarUbicacion() {
+  if (!navigator.geolocation) {
+    actualizarEstadoGps('error', 'Tu navegador no soporta ubicación GPS. No es posible registrarte sin ella.');
+    return;
+  }
+
+  actualizarEstadoGps('pendiente', 'Solicitando acceso a tu ubicación...');
+
+  navigator.geolocation.getCurrentPosition(
+    (posicion) => {
+      ubicacionRegistro = {
+        lat: posicion.coords.latitude,
+        lng: posicion.coords.longitude,
+      };
+      actualizarEstadoGps('ok', 'Ubicación activada correctamente. Ya puedes registrarte.');
+    },
+    (error) => {
+      ubicacionRegistro = null;
+      const mensajes = {
+        1: 'Debes dar permiso de ubicación para poder registrarte. Actívalo en tu navegador e intenta de nuevo.',
+        2: 'No se pudo obtener tu ubicación (GPS no disponible). Verifica tu conexión e intenta de nuevo.',
+        3: 'La solicitud de ubicación tardó demasiado. Intenta de nuevo.',
+      };
+      actualizarEstadoGps('error', mensajes[error.code] || 'No se pudo obtener tu ubicación. Intenta de nuevo.');
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+}
+
+document.getElementById('btnActivarGps').addEventListener('click', solicitarUbicacion);
+solicitarUbicacion(); // se pide automaticamente al cargar la pagina
+
+// Fecha minima seleccionable: hoy (no tiene sentido registrar una subida en el pasado).
+document.getElementById('fechaSalida').min = new Date().toISOString().split('T')[0];
+
+// ---------------------------------------------------------------------
+// Validaciones: telefono (minimo 8 digitos) y nombre real (dos o mas
+// palabras, solo letras).
+// ---------------------------------------------------------------------
+function contarDigitos(texto) {
+  return (texto.match(/\d/g) || []).length;
+}
+
+function telefonoValido(texto) {
+  return contarDigitos(texto) >= 8;
+}
+
+function nombreValido(texto) {
+  const limpio = (texto || '').trim();
+  const soloLetrasYEspacios = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/.test(limpio);
+  if (!soloLetrasYEspacios) return false;
+  const palabras = limpio.split(/\s+/).filter((p) => p.length >= 2);
+  return palabras.length >= 2; // al menos nombre y apellido
+}
+
+// ---------------------------------------------------------------------
+// Hora estimada de salida: se arma en formato 24h (HH:MM) a partir de
+// los selectores de hora / minuto / a.m.-p.m., para no cambiar el
+// formato que ya espera el backend y el asistente de recorrido.
+// ---------------------------------------------------------------------
+function obtenerHoraSalida24h() {
+  const horaSel = document.getElementById('horaSalidaHora').value;
+  const minutoSel = document.getElementById('horaSalidaMinuto').value;
+  const periodoSel = document.getElementById('horaSalidaPeriodo').value;
+
+  if (!horaSel) return '';
+
+  let hora24 = parseInt(horaSel, 10) % 12;
+  if (periodoSel === 'PM') hora24 += 12;
+
+  return `${String(hora24).padStart(2, '0')}:${minutoSel}`;
+}
+
 // --- Asistente de recorrido: clima + recomendaciones segun la hora de salida ---
 let ultimaConsultaAsistente = null;
 
-document.getElementById('horaSalida').addEventListener('change', async (evento) => {
-  const horaSalida = evento.target.value;
+async function actualizarAsistente() {
+  const horaSalida = obtenerHoraSalida24h();
+  const fechaSalida = document.getElementById('fechaSalida').value;
   const caja = document.getElementById('cajaAsistente');
   const contenido = document.getElementById('contenidoAsistente');
 
@@ -16,15 +119,19 @@ document.getElementById('horaSalida').addEventListener('change', async (evento) 
   }
 
   // Evita pedir lo mismo dos veces seguidas.
-  if (horaSalida === ultimaConsultaAsistente) return;
-  ultimaConsultaAsistente = horaSalida;
+  const clave = `${fechaSalida}|${horaSalida}`;
+  if (clave === ultimaConsultaAsistente) return;
+  ultimaConsultaAsistente = clave;
 
   caja.classList.remove('d-none');
   contenido.innerHTML = 'Consultando el clima esperado para tu salida…';
 
   try {
     const personasGrupo = document.getElementById('personasGrupo').value || 1;
-    const respuesta = await fetch(`/api/asistente/recomendaciones?horaSalida=${encodeURIComponent(horaSalida)}&personasGrupo=${personasGrupo}`);
+    const parametros = new URLSearchParams({ horaSalida, personasGrupo });
+    if (fechaSalida) parametros.set('fecha', fechaSalida);
+
+    const respuesta = await fetch(`/api/asistente/recomendaciones?${parametros.toString()}`);
     const datos = await respuesta.json();
 
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudo consultar el asistente.');
@@ -34,6 +141,10 @@ document.getElementById('horaSalida').addEventListener('change', async (evento) 
     contenido.innerHTML = 'No se pudo consultar el clima en este momento, pero puedes continuar tu registro sin problema.';
     console.error(error);
   }
+}
+
+['horaSalidaHora', 'horaSalidaMinuto', 'horaSalidaPeriodo', 'fechaSalida'].forEach((idCampo) => {
+  document.getElementById(idCampo).addEventListener('change', actualizarAsistente);
 });
 
 function construirHtmlAsistente(datos) {
@@ -87,14 +198,55 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
   const mensajeError = document.getElementById('mensajeError');
   mensajeError.classList.add('d-none');
 
+  const nombre = document.getElementById('nombre').value.trim();
+  const telefono = document.getElementById('telefono').value.trim();
+  const contactoNombre = document.getElementById('contactoNombre').value.trim();
+  const contactoTelefono = document.getElementById('contactoTelefono').value.trim();
+  const fechaSalida = document.getElementById('fechaSalida').value;
+  const horaSalidaEstimada = obtenerHoraSalida24h();
+
+  // --- Validaciones antes de enviar nada al servidor ---
+  if (!ubicacionRegistro) {
+    mensajeError.textContent = 'Debes activar tu ubicación GPS antes de registrarte.';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+  if (!nombreValido(nombre)) {
+    mensajeError.textContent = 'Escribe tu nombre completo (nombre y apellido, solo letras).';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+  if (!telefonoValido(telefono)) {
+    mensajeError.textContent = 'El teléfono debe tener al menos 8 dígitos.';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+  if (!nombreValido(contactoNombre)) {
+    mensajeError.textContent = 'Escribe el nombre completo de tu contacto de emergencia (nombre y apellido, solo letras).';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+  if (!telefonoValido(contactoTelefono)) {
+    mensajeError.textContent = 'El teléfono del contacto de emergencia debe tener al menos 8 dígitos.';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+  if (!fechaSalida || !horaSalidaEstimada) {
+    mensajeError.textContent = 'Indica el día y la hora en la que vas a subir.';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+
   const datos = {
-    nombre: document.getElementById('nombre').value.trim(),
-    telefono: document.getElementById('telefono').value.trim(),
+    nombre,
+    telefono,
     dpi: document.getElementById('dpi').value.trim(),
     personasGrupo: parseInt(document.getElementById('personasGrupo').value, 10) || 1,
-    horaSalidaEstimada: document.getElementById('horaSalida').value,
-    contactoEmergenciaNombre: document.getElementById('contactoNombre').value.trim(),
-    contactoEmergenciaTelefono: document.getElementById('contactoTelefono').value.trim(),
+    fechaSalidaEstimada: fechaSalida,
+    horaSalidaEstimada,
+    contactoEmergenciaNombre: contactoNombre,
+    contactoEmergenciaTelefono: contactoTelefono,
+    ubicacionRegistro,
   };
 
   btn.disabled = true;

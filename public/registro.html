@@ -22,14 +22,22 @@
     <h2 class="mb-2">Registro de excursionista</h2>
     <p class="text-muted mb-4">Completa tus datos antes de iniciar el recorrido al Volcán de Agua. Al finalizar, se activará el monitoreo GPS en este mismo dispositivo.</p>
 
+    <div id="cajaGps" class="alert alert-warning d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <strong>📍 Ubicación GPS</strong>
+        <div id="mensajeGps" class="small mb-0">Solicitando acceso a tu ubicación...</div>
+      </div>
+      <button type="button" id="btnActivarGps" class="btn btn-sm btn-outline-dark d-none">Activar ubicación</button>
+    </div>
+
     <form id="formRegistro" class="card p-4">
       <div class="mb-3">
         <label for="nombre" class="form-label">Nombre completo *</label>
-        <input type="text" class="form-control" id="nombre" required>
+        <input type="text" class="form-control" id="nombre" placeholder="Ej. Juan Pérez" required>
       </div>
       <div class="mb-3">
         <label for="telefono" class="form-label">Teléfono *</label>
-        <input type="tel" class="form-control" id="telefono" placeholder="Ej. 5555-5555" required>
+        <input type="tel" class="form-control" id="telefono" placeholder="Ej. 5555-5555 (mínimo 8 dígitos)" required>
       </div>
       <div class="mb-3">
         <label for="dpi" class="form-label">DPI (opcional)</label>
@@ -40,8 +48,30 @@
         <input type="number" class="form-control" id="personasGrupo" value="1" min="1">
       </div>
       <div class="mb-3">
-        <label for="horaSalida" class="form-label">Hora estimada de salida</label>
-        <input type="time" class="form-control" id="horaSalida">
+        <label for="fechaSalida" class="form-label">¿Qué día vas a subir? *</label>
+        <input type="date" class="form-control" id="fechaSalida" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Hora estimada de salida *</label>
+        <div class="d-flex gap-2">
+          <select class="form-select" id="horaSalidaHora" required>
+            <option value="">Hora</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+          </select>
+          <select class="form-select" id="horaSalidaMinuto" required>
+            <option value="00">00</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="45">45</option>
+          </select>
+          <select class="form-select" id="horaSalidaPeriodo" required>
+            <option value="AM">a. m.</option>
+            <option value="PM">p. m.</option>
+          </select>
+        </div>
       </div>
 
       <div id="cajaAsistente" class="d-none">
@@ -53,12 +83,12 @@
       <p class="text-muted small mb-3">Un familiar o persona cercana a quien podamos llamar si ocurre una emergencia durante tu recorrido.</p>
 
       <div class="mb-3">
-        <label for="contactoNombre" class="form-label">Nombre del contacto</label>
-        <input type="text" class="form-control" id="contactoNombre">
+        <label for="contactoNombre" class="form-label">Nombre del contacto *</label>
+        <input type="text" class="form-control" id="contactoNombre" placeholder="Nombre y apellido" required>
       </div>
       <div class="mb-3">
         <label for="contactoTelefono" class="form-label">Teléfono del contacto *</label>
-        <input type="tel" class="form-control" id="contactoTelefono" placeholder="Ej. 5555-5555" required>
+        <input type="tel" class="form-control" id="contactoTelefono" placeholder="Ej. 5555-5555 (mínimo 8 dígitos)" required>
       </div>
 
       <div class="alert alert-light small">
@@ -68,7 +98,7 @@
 
       <div id="mensajeError" class="alert alert-danger d-none"></div>
 
-      <button type="submit" class="btn btn-volcan btn-lg mt-2" id="btnRegistrar">
+      <button type="submit" class="btn btn-volcan btn-lg mt-2" id="btnRegistrar" disabled>
         Registrar e iniciar monitoreo
       </button>
     </form>

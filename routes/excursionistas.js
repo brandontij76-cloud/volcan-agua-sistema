@@ -11,6 +11,27 @@ const { db } = require('../config/firebase');
 const { analizarUbicacion, estaEnLaCima, regresoAlPueblo } = require('../services/deteccionAnomalias');
 const { registrarAlerta } = require('../services/gestionAlertas');
 
+// ---------------------------------------------------------------------
+// Validaciones de servidor (nunca hay que confiar solo en el navegador:
+// estas mismas reglas ya se validan en public/js/registro.js, pero se
+// repiten aqui por seguridad, ya que el frontend se puede saltar).
+// ---------------------------------------------------------------------
+function contarDigitos(texto) {
+  return ((texto || '').match(/\d/g) || []).length;
+}
+
+function telefonoValido(texto) {
+  return contarDigitos(texto) >= 8;
+}
+
+function nombreValido(texto) {
+  const limpio = (texto || '').trim();
+  const soloLetrasYEspacios = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/.test(limpio);
+  if (!soloLetrasYEspacios) return false;
+  const palabras = limpio.split(/\s+/).filter((p) => p.length >= 2);
+  return palabras.length >= 2; // al menos nombre y apellido
+}
+
 // POST /api/excursionistas
 // Registra un nuevo excursionista antes de iniciar el recorrido.
 router.post('/', async (req, res) => {
@@ -20,16 +41,34 @@ router.post('/', async (req, res) => {
       telefono,
       dpi,
       personasGrupo,
+      fechaSalidaEstimada,
       horaSalidaEstimada,
       contactoEmergenciaNombre,
       contactoEmergenciaTelefono,
+      ubicacionRegistro,
+      agenciaId,
     } = req.body;
 
     if (!nombre || !telefono) {
       return res.status(400).json({ error: 'Nombre y telefono son obligatorios.' });
     }
+    if (!nombreValido(nombre)) {
+      return res.status(400).json({ error: 'Escribe tu nombre completo (nombre y apellido, solo letras).' });
+    }
+    if (!telefonoValido(telefono)) {
+      return res.status(400).json({ error: 'El telefono debe tener al menos 8 digitos.' });
+    }
     if (!contactoEmergenciaTelefono) {
       return res.status(400).json({ error: 'El telefono de un contacto de emergencia es obligatorio.' });
+    }
+    if (!telefonoValido(contactoEmergenciaTelefono)) {
+      return res.status(400).json({ error: 'El telefono del contacto de emergencia debe tener al menos 8 digitos.' });
+    }
+    if (!nombreValido(contactoEmergenciaNombre)) {
+      return res.status(400).json({ error: 'Escribe el nombre completo del contacto de emergencia (nombre y apellido, solo letras).' });
+    }
+    if (!ubicacionRegistro || ubicacionRegistro.lat == null || ubicacionRegistro.lng == null) {
+      return res.status(400).json({ error: 'Debes activar tu ubicacion GPS para registrarte.' });
     }
 
     const nuevoRef = db.ref('excursionistas').push();
@@ -39,9 +78,12 @@ router.post('/', async (req, res) => {
       telefono,
       dpi: dpi || null,
       personasGrupo: personasGrupo || 1,
+      fechaSalidaEstimada: fechaSalidaEstimada || null,
       horaSalidaEstimada: horaSalidaEstimada || null,
       contactoEmergenciaNombre: contactoEmergenciaNombre || null,
       contactoEmergenciaTelefono,
+      ubicacionRegistro,
+      agenciaId: agenciaId || null,
       estado: 'activo', // activo | finalizado
       fechaRegistro: Date.now(),
       ubicacionActual: null,
