@@ -1,34 +1,43 @@
 // public/js/registro.js
-// Envia el formulario de registro al backend y, si todo sale bien,
-// redirige al excursionista a la pantalla de monitoreo con su id.
+// Maneja los dos flujos de registro: individual (con paso de revision antes
+// de enviar) y por agencia (registro de un grupo, persona por persona, con
+// opcion de editar/eliminar mientras el grupo no este completo).
 
 // ---------------------------------------------------------------------
 // GPS obligatorio: no se puede registrar sin activar la ubicacion.
+// Se comparte entre ambos modos (individual y agencia): representa la
+// ubicacion desde donde se esta haciendo el registro.
 // ---------------------------------------------------------------------
 let ubicacionRegistro = null; // { lat, lng } una vez que el navegador la entregue
+
+function botonesQueDependenDelGps() {
+  return [
+    document.getElementById('btnRevisarIndividual'),
+    document.getElementById('btnIniciarGrupo'),
+  ].filter(Boolean);
+}
 
 function actualizarEstadoGps(estado, mensaje) {
   const caja = document.getElementById('cajaGps');
   const texto = document.getElementById('mensajeGps');
   const btn = document.getElementById('btnActivarGps');
-  const btnRegistrar = document.getElementById('btnRegistrar');
 
   texto.textContent = mensaje;
   caja.classList.remove('alert-warning', 'alert-success', 'alert-danger');
 
+  const habilitar = estado === 'ok';
   if (estado === 'ok') {
     caja.classList.add('alert-success');
     btn.classList.add('d-none');
-    btnRegistrar.disabled = false;
   } else if (estado === 'error') {
     caja.classList.add('alert-danger');
     btn.classList.remove('d-none');
-    btnRegistrar.disabled = true;
   } else {
     caja.classList.add('alert-warning');
     btn.classList.add('d-none');
-    btnRegistrar.disabled = true;
   }
+
+  botonesQueDependenDelGps().forEach((b) => { b.disabled = !habilitar; });
 }
 
 function solicitarUbicacion() {
@@ -45,7 +54,7 @@ function solicitarUbicacion() {
         lat: posicion.coords.latitude,
         lng: posicion.coords.longitude,
       };
-      actualizarEstadoGps('ok', 'Ubicación activada correctamente. Ya puedes registrarte.');
+      actualizarEstadoGps('ok', 'Ubicación activada correctamente. Ya puedes continuar.');
     },
     (error) => {
       ubicacionRegistro = null;
@@ -63,56 +72,17 @@ function solicitarUbicacion() {
 document.getElementById('btnActivarGps').addEventListener('click', solicitarUbicacion);
 solicitarUbicacion(); // se pide automaticamente al cargar la pagina
 
-// ---------------------------------------------------------------------
-// Modo de registro: "individual" (el propio excursionista, inicia su
-// monitoreo en este dispositivo) o "agencia" (un representante registra
-// a varios excursionistas de una empresa de excursion, uno tras otro,
-// desde el mismo dispositivo, sin iniciar monitoreo GPS para si mismo).
-// ---------------------------------------------------------------------
-const cajaAgencia = document.getElementById('cajaAgencia');
-const selectAgencia = document.getElementById('selectAgencia');
-const avisoRegistroAgencia = document.getElementById('avisoRegistroAgencia');
-const btnRegistrarTexto = { individual: 'Registrar e iniciar monitoreo', agencia: 'Registrar excursionista de la agencia' };
-
-function modoActual() {
-  return document.querySelector('input[name="modoRegistro"]:checked').value;
-}
-
-function actualizarModoRegistro() {
-  const modo = modoActual();
-  const esAgencia = modo === 'agencia';
-  cajaAgencia.classList.toggle('d-none', !esAgencia);
-  avisoRegistroAgencia.classList.toggle('d-none', !esAgencia);
-  selectAgencia.required = esAgencia;
-  document.getElementById('btnRegistrar').textContent = btnRegistrarTexto[modo];
-}
-
-document.querySelectorAll('input[name="modoRegistro"]').forEach((input) => {
-  input.addEventListener('change', actualizarModoRegistro);
-});
-
-// Carga la lista de agencias ya creadas por la Municipalidad (panel admin).
-fetch('/api/agencias')
-  .then((r) => r.json())
-  .then((agencias) => {
-    agencias.forEach((a) => {
-      const opcion = document.createElement('option');
-      opcion.value = a.id;
-      opcion.textContent = a.nombre;
-      selectAgencia.appendChild(opcion);
-    });
-  })
-  .catch((error) => console.error('No se pudo cargar la lista de agencias:', error));
-
 // Fecha minima seleccionable: hoy (no tiene sentido registrar una subida en el pasado).
-document.getElementById('fechaSalida').min = new Date().toISOString().split('T')[0];
+const hoyISO = new Date().toISOString().split('T')[0];
+document.getElementById('fechaSalida').min = hoyISO;
+document.getElementById('fechaSalidaGrupo').min = hoyISO;
 
 // ---------------------------------------------------------------------
 // Validaciones: telefono (minimo 8 digitos) y nombre real (dos o mas
 // palabras, solo letras).
 // ---------------------------------------------------------------------
 function contarDigitos(texto) {
-  return (texto.match(/\d/g) || []).length;
+  return ((texto || '').match(/\d/g) || []).length;
 }
 
 function telefonoValido(texto) {
@@ -127,15 +97,21 @@ function nombreValido(texto) {
   return palabras.length >= 2; // al menos nombre y apellido
 }
 
+function escaparHtml(texto) {
+  const div = document.createElement('div');
+  div.textContent = texto;
+  return div.innerHTML;
+}
+
 // ---------------------------------------------------------------------
-// Hora estimada de salida: se arma en formato 24h (HH:MM) a partir de
-// los selectores de hora / minuto / a.m.-p.m., para no cambiar el
-// formato que ya espera el backend y el asistente de recorrido.
+// Hora estimada de salida: arma HH:MM (24h) a partir de 3 selects, con un
+// sufijo para poder reutilizar la misma logica en el formulario individual
+// (sufijo '') y en el de grupo/agencia (sufijo 'Grupo').
 // ---------------------------------------------------------------------
-function obtenerHoraSalida24h() {
-  const horaSel = document.getElementById('horaSalidaHora').value;
-  const minutoSel = document.getElementById('horaSalidaMinuto').value;
-  const periodoSel = document.getElementById('horaSalidaPeriodo').value;
+function obtenerHoraSalida24h(sufijo = '') {
+  const horaSel = document.getElementById(`horaSalida${sufijo}Hora`).value;
+  const minutoSel = document.getElementById(`horaSalida${sufijo}Minuto`).value;
+  const periodoSel = document.getElementById(`horaSalida${sufijo}Periodo`).value;
 
   if (!horaSel) return '';
 
@@ -145,8 +121,49 @@ function obtenerHoraSalida24h() {
   return `${String(hora24).padStart(2, '0')}:${minutoSel}`;
 }
 
-// --- Asistente de recorrido: clima + recomendaciones segun la hora de salida ---
+function horaLegible(hora24, periodoSel) {
+  if (!hora24) return '';
+  const [h] = hora24.split(':');
+  return `${hora24} ${periodoSel === 'PM' ? 'p. m.' : 'a. m.'}`;
+}
+
+// ---------------------------------------------------------------------
+// Modo de registro: individual (uno mismo) o agencia (registro de grupo).
+// ---------------------------------------------------------------------
+function modoActual() {
+  return document.querySelector('input[name="modoRegistro"]:checked').value;
+}
+
+function actualizarModoRegistro() {
+  const esAgencia = modoActual() === 'agencia';
+  document.getElementById('panelIndividual').classList.toggle('d-none', esAgencia);
+  document.getElementById('panelAgencia').classList.toggle('d-none', !esAgencia);
+}
+
+document.querySelectorAll('input[name="modoRegistro"]').forEach((input) => {
+  input.addEventListener('change', actualizarModoRegistro);
+});
+
+// Carga la lista de agencias ya creadas por la Municipalidad (panel admin).
+fetch('/api/agencias')
+  .then((r) => r.json())
+  .then((agencias) => {
+    const select = document.getElementById('selectAgencia');
+    agencias.forEach((a) => {
+      const opcion = document.createElement('option');
+      opcion.value = a.id;
+      opcion.textContent = a.nombre;
+      select.appendChild(opcion);
+    });
+  })
+  .catch((error) => console.error('No se pudo cargar la lista de agencias:', error));
+
+// =======================================================================
+// MODO INDIVIDUAL: llenar formulario -> revisar -> confirmar y enviar.
+// Una vez enviado, ya no se puede editar (por eso el paso de revision).
+// =======================================================================
 let ultimaConsultaAsistente = null;
+let datosPendientesIndividual = null;
 
 async function actualizarAsistente() {
   const horaSalida = obtenerHoraSalida24h();
@@ -159,7 +176,6 @@ async function actualizarAsistente() {
     return;
   }
 
-  // Evita pedir lo mismo dos veces seguidas.
   const clave = `${fechaSalida}|${horaSalida}`;
   if (clave === ultimaConsultaAsistente) return;
   ultimaConsultaAsistente = clave;
@@ -191,9 +207,6 @@ async function actualizarAsistente() {
 function construirHtmlAsistente(datos) {
   const { clima, recomendaciones, estadisticaHistorica, riesgo, textoGemini } = datos;
 
-  // Si Gemini generó un resumen en lenguaje natural, se muestra primero
-  // (es lo más fácil de leer). Si no, se arma el resumen con los datos
-  // crudos como respaldo.
   if (textoGemini) {
     return `
       <div class="chip mb-2">✨ Generado con IA (Gemini)</div>
@@ -230,12 +243,9 @@ function construirHtmlAsistente(datos) {
   `;
 }
 
-// --- Envio del formulario ---
-
-document.getElementById('formRegistro').addEventListener('submit', async (evento) => {
+document.getElementById('formIndividual').addEventListener('submit', (evento) => {
   evento.preventDefault();
 
-  const btn = document.getElementById('btnRegistrar');
   const mensajeError = document.getElementById('mensajeError');
   mensajeError.classList.add('d-none');
 
@@ -245,8 +255,8 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
   const contactoTelefono = document.getElementById('contactoTelefono').value.trim();
   const fechaSalida = document.getElementById('fechaSalida').value;
   const horaSalidaEstimada = obtenerHoraSalida24h();
+  const periodoSel = document.getElementById('horaSalidaPeriodo').value;
 
-  // --- Validaciones antes de enviar nada al servidor ---
   if (!ubicacionRegistro) {
     mensajeError.textContent = 'Debes activar tu ubicación GPS antes de registrarte.';
     mensajeError.classList.remove('d-none');
@@ -278,14 +288,7 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
     return;
   }
 
-  const modo = modoActual();
-  if (modo === 'agencia' && !selectAgencia.value) {
-    mensajeError.textContent = 'Selecciona la agencia de excursión.';
-    mensajeError.classList.remove('d-none');
-    return;
-  }
-
-  const datos = {
+  datosPendientesIndividual = {
     nombre,
     telefono,
     dpi: document.getElementById('dpi').value.trim(),
@@ -295,17 +298,44 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
     contactoEmergenciaNombre: contactoNombre,
     contactoEmergenciaTelefono: contactoTelefono,
     ubicacionRegistro,
-    agenciaId: modo === 'agencia' ? selectAgencia.value : null,
+    agenciaId: null,
   };
 
+  // Muestra el resumen y pasa al paso de confirmacion.
+  document.getElementById('resumenIndividual').innerHTML = `
+    <ul class="list-unstyled mb-0">
+      <li class="mb-2"><strong>Nombre:</strong> ${escaparHtml(nombre)}</li>
+      <li class="mb-2"><strong>Teléfono:</strong> ${escaparHtml(telefono)}</li>
+      <li class="mb-2"><strong>Personas en el grupo:</strong> ${datosPendientesIndividual.personasGrupo}</li>
+      <li class="mb-2"><strong>Día de salida:</strong> ${fechaSalida}</li>
+      <li class="mb-2"><strong>Hora de salida:</strong> ${horaLegible(horaSalidaEstimada, periodoSel)}</li>
+      <li class="mb-2"><strong>Contacto de emergencia:</strong> ${escaparHtml(contactoNombre)} · ${escaparHtml(contactoTelefono)}</li>
+    </ul>
+  `;
+  document.getElementById('mensajeErrorRevision').classList.add('d-none');
+  document.getElementById('formIndividual').classList.add('d-none');
+  document.getElementById('revisionIndividual').classList.remove('d-none');
+  window.scrollTo({ top: document.getElementById('revisionIndividual').offsetTop - 20, behavior: 'smooth' });
+});
+
+document.getElementById('btnEditarIndividual').addEventListener('click', () => {
+  document.getElementById('revisionIndividual').classList.add('d-none');
+  document.getElementById('formIndividual').classList.remove('d-none');
+});
+
+document.getElementById('btnConfirmarIndividual').addEventListener('click', async () => {
+  const btn = document.getElementById('btnConfirmarIndividual');
+  const mensajeErrorRevision = document.getElementById('mensajeErrorRevision');
+  mensajeErrorRevision.classList.add('d-none');
+
   btn.disabled = true;
-  btn.textContent = 'Registrando...';
+  btn.textContent = 'Enviando...';
 
   try {
     const respuesta = await fetch('/api/excursionistas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos),
+      body: JSON.stringify(datosPendientesIndividual),
     });
 
     const resultado = await respuesta.json();
@@ -314,27 +344,212 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
       throw new Error(resultado.error || 'No se pudo completar el registro.');
     }
 
-    if (modo === 'agencia') {
-      // Un representante de la agencia puede seguir registrando a mas
-      // excursionistas uno tras otro, sin salir de esta pagina ni iniciar
-      // el monitoreo GPS de su propio dispositivo.
-      avisoRegistroAgencia.className = 'alert alert-success small';
-      avisoRegistroAgencia.textContent = `✅ ${resultado.nombre} fue registrado. Puedes registrar al siguiente excursionista de esta misma agencia.`;
-      ['nombre', 'telefono', 'dpi', 'contactoNombre', 'contactoTelefono'].forEach((id) => {
-        document.getElementById(id).value = '';
-      });
-      document.getElementById('personasGrupo').value = 1;
-      btn.disabled = false;
-      btn.textContent = btnRegistrarTexto.agencia;
-      document.getElementById('nombre').focus();
-    } else {
-      // Redirige a la pantalla de monitoreo, pasando el id del excursionista.
-      window.location.href = `monitor.html?id=${resultado.id}&nombre=${encodeURIComponent(resultado.nombre)}`;
-    }
+    // Ya se envio: no hay vuelta atras, se redirige al monitoreo GPS.
+    window.location.href = `monitor.html?id=${resultado.id}&nombre=${encodeURIComponent(resultado.nombre)}`;
   } catch (error) {
-    mensajeError.textContent = error.message;
-    mensajeError.classList.remove('d-none');
+    mensajeErrorRevision.textContent = error.message;
+    mensajeErrorRevision.classList.remove('d-none');
     btn.disabled = false;
-    btn.textContent = btnRegistrarTexto[modo];
+    btn.textContent = '✅ Confirmar y enviar';
+  }
+});
+
+// =======================================================================
+// MODO AGENCIA: configurar el grupo (agencia, cantidad, fecha y hora una
+// sola vez) y luego agregar a cada excursionista solo con nombre y
+// telefono, con opcion de editar o eliminar mientras el grupo siga abierto.
+// =======================================================================
+let grupoConfig = null; // { agenciaId, cantidad, fechaSalidaEstimada, horaSalidaEstimada }
+let registrosGrupo = []; // [{ id, nombre, telefono }]
+
+document.getElementById('formGrupoAgencia').addEventListener('submit', (evento) => {
+  evento.preventDefault();
+
+  const mensajeErrorGrupo = document.getElementById('mensajeErrorGrupo');
+  mensajeErrorGrupo.classList.add('d-none');
+
+  const agenciaId = document.getElementById('selectAgencia').value;
+  const cantidad = parseInt(document.getElementById('cantidadGrupo').value, 10) || 0;
+  const fechaSalidaEstimada = document.getElementById('fechaSalidaGrupo').value;
+  const horaSalidaEstimada = obtenerHoraSalida24h('Grupo');
+
+  if (!ubicacionRegistro) {
+    mensajeErrorGrupo.textContent = 'Debes activar tu ubicación GPS antes de continuar.';
+    mensajeErrorGrupo.classList.remove('d-none');
+    return;
+  }
+  if (!agenciaId) {
+    mensajeErrorGrupo.textContent = 'Selecciona la agencia de excursión.';
+    mensajeErrorGrupo.classList.remove('d-none');
+    return;
+  }
+  if (!cantidad || cantidad < 1) {
+    mensajeErrorGrupo.textContent = 'Indica cuántas personas van a subir (mínimo 1).';
+    mensajeErrorGrupo.classList.remove('d-none');
+    return;
+  }
+  if (!fechaSalidaEstimada || !horaSalidaEstimada) {
+    mensajeErrorGrupo.textContent = 'Indica el día y la hora en la que va a subir el grupo.';
+    mensajeErrorGrupo.classList.remove('d-none');
+    return;
+  }
+
+  grupoConfig = { agenciaId, cantidad, fechaSalidaEstimada, horaSalidaEstimada };
+
+  // Bloquea la configuracion del grupo (ya no se puede cambiar la agencia,
+  // cantidad, fecha u hora sin recargar la pagina) y muestra el paso 2.
+  document.getElementById('formGrupoAgencia').querySelectorAll('input, select, button').forEach((el) => { el.disabled = true; });
+  document.getElementById('cajaListaGrupo').classList.remove('d-none');
+  actualizarContadorGrupo();
+  window.scrollTo({ top: document.getElementById('cajaListaGrupo').offsetTop - 20, behavior: 'smooth' });
+});
+
+function actualizarContadorGrupo() {
+  document.getElementById('contadorGrupo').textContent = `${registrosGrupo.length} / ${grupoConfig.cantidad} registrados`;
+
+  const completo = registrosGrupo.length >= grupoConfig.cantidad;
+  document.getElementById('avisoGrupoCompleto').classList.toggle('d-none', !completo);
+  document.getElementById('nombreGrupo').disabled = completo;
+  document.getElementById('telefonoGrupo').disabled = completo;
+  document.getElementById('btnAgregarGrupo').disabled = completo;
+}
+
+function renderTablaGrupo() {
+  const cuerpo = document.getElementById('tablaGrupo');
+  if (registrosGrupo.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="3" class="text-muted text-center">Aún no hay excursionistas registrados en este grupo.</td></tr>';
+    return;
+  }
+  cuerpo.innerHTML = registrosGrupo.map((p) => `
+    <tr>
+      <td>${escaparHtml(p.nombre)}</td>
+      <td>${escaparHtml(p.telefono)}</td>
+      <td class="text-end">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editarPersonaGrupo('${p.id}')">✏️ Editar</button>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarPersonaGrupo('${p.id}')">🗑️ Eliminar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editarPersonaGrupo(id) {
+  const persona = registrosGrupo.find((p) => p.id === id);
+  if (!persona) return;
+  document.getElementById('idEdicionGrupo').value = persona.id;
+  document.getElementById('nombreGrupo').value = persona.nombre;
+  document.getElementById('telefonoGrupo').value = persona.telefono;
+  document.getElementById('btnAgregarGrupo').textContent = 'Guardar cambios';
+  document.getElementById('formPersonaGrupo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function eliminarPersonaGrupo(id) {
+  const persona = registrosGrupo.find((p) => p.id === id);
+  if (!persona) return;
+  const confirmar = confirm(`¿Eliminar a ${persona.nombre} de este grupo?`);
+  if (!confirmar) return;
+
+  try {
+    await fetch(`/api/excursionistas/${id}`, { method: 'DELETE' });
+    registrosGrupo = registrosGrupo.filter((p) => p.id !== id);
+    renderTablaGrupo();
+    actualizarContadorGrupo();
+  } catch (error) {
+    alert('No se pudo eliminar. Intenta de nuevo.');
+    console.error(error);
+  }
+}
+
+document.getElementById('formPersonaGrupo').addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+
+  const mensajeErrorGrupoPersona = document.getElementById('mensajeErrorGrupoPersona');
+  mensajeErrorGrupoPersona.classList.add('d-none');
+
+  const idEdicion = document.getElementById('idEdicionGrupo').value;
+  const nombre = document.getElementById('nombreGrupo').value.trim();
+  const telefono = document.getElementById('telefonoGrupo').value.trim();
+
+  if (!nombreValido(nombre)) {
+    mensajeErrorGrupoPersona.textContent = 'Escribe el nombre completo (nombre y apellido, solo letras).';
+    mensajeErrorGrupoPersona.classList.remove('d-none');
+    return;
+  }
+  if (!telefonoValido(telefono)) {
+    mensajeErrorGrupoPersona.textContent = 'El teléfono debe tener al menos 8 dígitos.';
+    mensajeErrorGrupoPersona.classList.remove('d-none');
+    return;
+  }
+
+  const btn = document.getElementById('btnAgregarGrupo');
+
+  if (idEdicion) {
+    // --- Editar a alguien ya registrado en este grupo ---
+    const confirmar = confirm(`¿Confirmas los datos corregidos?\nNombre: ${nombre}\nTeléfono: ${telefono}`);
+    if (!confirmar) return;
+
+    btn.disabled = true;
+    try {
+      await fetch(`/api/excursionistas/${idEdicion}/basico`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, telefono }),
+      });
+      const persona = registrosGrupo.find((p) => p.id === idEdicion);
+      if (persona) { persona.nombre = nombre; persona.telefono = telefono; }
+      renderTablaGrupo();
+      document.getElementById('formPersonaGrupo').reset();
+      document.getElementById('idEdicionGrupo').value = '';
+      btn.textContent = 'Agregar';
+    } catch (error) {
+      mensajeErrorGrupoPersona.textContent = 'No se pudo guardar la corrección. Intenta de nuevo.';
+      mensajeErrorGrupoPersona.classList.remove('d-none');
+      console.error(error);
+    } finally {
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  // --- Agregar a una persona nueva del grupo ---
+  if (registrosGrupo.length >= grupoConfig.cantidad) {
+    mensajeErrorGrupoPersona.textContent = `Ya se registró al máximo de personas indicado (${grupoConfig.cantidad}).`;
+    mensajeErrorGrupoPersona.classList.remove('d-none');
+    return;
+  }
+
+  const confirmar = confirm(`¿Confirmas que se llama ${nombre} y su teléfono es ${telefono}?`);
+  if (!confirmar) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const respuesta = await fetch('/api/excursionistas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre,
+        telefono,
+        personasGrupo: 1,
+        fechaSalidaEstimada: grupoConfig.fechaSalidaEstimada,
+        horaSalidaEstimada: grupoConfig.horaSalidaEstimada,
+        ubicacionRegistro,
+        agenciaId: grupoConfig.agenciaId,
+      }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo registrar al excursionista.');
+
+    registrosGrupo.push({ id: resultado.id, nombre: resultado.nombre, telefono: resultado.telefono });
+    renderTablaGrupo();
+    actualizarContadorGrupo();
+    document.getElementById('formPersonaGrupo').reset();
+  } catch (error) {
+    mensajeErrorGrupoPersona.textContent = error.message;
+    mensajeErrorGrupoPersona.classList.remove('d-none');
+    console.error(error);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Agregar';
   }
 });

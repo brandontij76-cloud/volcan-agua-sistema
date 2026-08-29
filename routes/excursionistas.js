@@ -58,14 +58,20 @@ router.post('/', async (req, res) => {
     if (!telefonoValido(telefono)) {
       return res.status(400).json({ error: 'El telefono debe tener al menos 8 digitos.' });
     }
-    if (!contactoEmergenciaTelefono) {
-      return res.status(400).json({ error: 'El telefono de un contacto de emergencia es obligatorio.' });
-    }
-    if (!telefonoValido(contactoEmergenciaTelefono)) {
-      return res.status(400).json({ error: 'El telefono del contacto de emergencia debe tener al menos 8 digitos.' });
-    }
-    if (!nombreValido(contactoEmergenciaNombre)) {
-      return res.status(400).json({ error: 'Escribe el nombre completo del contacto de emergencia (nombre y apellido, solo letras).' });
+    // El contacto de emergencia solo se pide cuando la persona se registra
+    // por su cuenta. Cuando la registra una agencia (agenciaId presente),
+    // ya se sabe que va acompañada por el grupo y no se piden mas datos
+    // que nombre y telefono.
+    if (!agenciaId) {
+      if (!contactoEmergenciaTelefono) {
+        return res.status(400).json({ error: 'El telefono de un contacto de emergencia es obligatorio.' });
+      }
+      if (!telefonoValido(contactoEmergenciaTelefono)) {
+        return res.status(400).json({ error: 'El telefono del contacto de emergencia debe tener al menos 8 digitos.' });
+      }
+      if (!nombreValido(contactoEmergenciaNombre)) {
+        return res.status(400).json({ error: 'Escribe el nombre completo del contacto de emergencia (nombre y apellido, solo letras).' });
+      }
     }
     if (!ubicacionRegistro || ubicacionRegistro.lat == null || ubicacionRegistro.lng == null) {
       return res.status(400).json({ error: 'Debes activar tu ubicacion GPS para registrarte.' });
@@ -130,6 +136,59 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error al obtener excursionista:', error);
     res.status(500).json({ error: 'No se pudo obtener el excursionista.' });
+  }
+});
+
+// PATCH /api/excursionistas/:id/basico
+// Permite corregir nombre y/o telefono poco despues del registro (por
+// ejemplo, cuando un representante de agencia se equivoca al escribir el
+// nombre de uno de sus excursionistas). No toca ubicacion, estado ni nada
+// relacionado al monitoreo.
+router.patch('/:id/basico', async (req, res) => {
+  try {
+    const { nombre, telefono } = req.body;
+    const ref = db.ref(`excursionistas/${req.params.id}`);
+    const snapshot = await ref.once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: 'Excursionista no encontrado.' });
+    }
+
+    if (nombre != null && !nombreValido(nombre)) {
+      return res.status(400).json({ error: 'Escribe el nombre completo (nombre y apellido, solo letras).' });
+    }
+    if (telefono != null && !telefonoValido(telefono)) {
+      return res.status(400).json({ error: 'El telefono debe tener al menos 8 digitos.' });
+    }
+
+    const cambios = {};
+    if (nombre != null) cambios.nombre = nombre;
+    if (telefono != null) cambios.telefono = telefono;
+
+    await ref.update(cambios);
+    const actualizado = (await ref.once('value')).val();
+    res.json(actualizado);
+  } catch (error) {
+    console.error('Error al editar excursionista:', error);
+    res.status(500).json({ error: 'No se pudo editar el excursionista.' });
+  }
+});
+
+// DELETE /api/excursionistas/:id
+// Elimina un registro por completo. Pensado para corregir errores justo
+// despues de registrar (por ejemplo, un representante de agencia que
+// registro a la persona equivocada por error).
+router.delete('/:id', async (req, res) => {
+  try {
+    const ref = db.ref(`excursionistas/${req.params.id}`);
+    const snapshot = await ref.once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: 'Excursionista no encontrado.' });
+    }
+    await ref.remove();
+    res.json({ mensaje: 'Excursionista eliminado.' });
+  } catch (error) {
+    console.error('Error al eliminar excursionista:', error);
+    res.status(500).json({ error: 'No se pudo eliminar el excursionista.' });
   }
 });
 

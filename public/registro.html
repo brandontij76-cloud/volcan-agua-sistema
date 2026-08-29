@@ -20,7 +20,7 @@
   <main class="container my-5" style="max-width: 640px;">
     <span class="hero-eyebrow">Antes de subir</span>
     <h2 class="mb-2">Registro de excursionista</h2>
-    <p class="text-muted mb-4">Completa tus datos antes de iniciar el recorrido al Volcán de Agua. Al finalizar, se activará el monitoreo GPS en este mismo dispositivo.</p>
+    <p class="text-muted mb-4">Completa los datos antes de iniciar el recorrido al Volcán de Agua.</p>
 
     <div id="cajaGps" class="alert alert-warning d-flex justify-content-between align-items-center mb-3">
       <div>
@@ -30,102 +30,199 @@
       <button type="button" id="btnActivarGps" class="btn btn-sm btn-outline-dark d-none">Activar ubicación</button>
     </div>
 
-    <form id="formRegistro" class="card p-4">
-      <div class="mb-3">
-        <label class="form-label d-block">¿Cómo te vas a registrar? *</label>
-        <div class="toggle-modo-registro">
-          <input type="radio" name="modoRegistro" id="modoIndividual" value="individual" checked>
-          <label for="modoIndividual">🧍 Voy por mi cuenta</label>
-          <input type="radio" name="modoRegistro" id="modoAgencia" value="agencia">
-          <label for="modoAgencia">🏢 Registro de una agencia</label>
+    <div class="card p-4 mb-3">
+      <label class="form-label d-block">¿Cómo te vas a registrar? *</label>
+      <div class="toggle-modo-registro">
+        <input type="radio" name="modoRegistro" id="modoIndividual" value="individual" checked>
+        <label for="modoIndividual">🧍 Voy por mi cuenta</label>
+        <input type="radio" name="modoRegistro" id="modoAgencia" value="agencia">
+        <label for="modoAgencia">🏢 Registro de una agencia</label>
+      </div>
+    </div>
+
+    <!-- ============ MODO INDIVIDUAL ============ -->
+    <div id="panelIndividual">
+      <form id="formIndividual" class="card p-4">
+        <div class="mb-3">
+          <label for="nombre" class="form-label">Nombre completo *</label>
+          <input type="text" class="form-control" id="nombre" placeholder="Ej. Juan Pérez" required>
+        </div>
+        <div class="mb-3">
+          <label for="telefono" class="form-label">Teléfono *</label>
+          <input type="tel" class="form-control" id="telefono" placeholder="Ej. 5555-5555 (mínimo 8 dígitos)" required>
+        </div>
+        <div class="mb-3">
+          <label for="dpi" class="form-label">DPI (opcional)</label>
+          <input type="text" class="form-control" id="dpi">
+        </div>
+        <div class="mb-3">
+          <label for="personasGrupo" class="form-label">Número de personas en el grupo</label>
+          <input type="number" class="form-control" id="personasGrupo" value="1" min="1">
+        </div>
+        <div class="mb-3">
+          <label for="fechaSalida" class="form-label">¿Qué día vas a subir? *</label>
+          <input type="date" class="form-control" id="fechaSalida" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Hora estimada de salida *</label>
+          <div class="d-flex gap-2">
+            <select class="form-select" id="horaSalidaHora" required>
+              <option value="">Hora</option>
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+            <select class="form-select" id="horaSalidaMinuto" required>
+              <option value="00">00</option>
+              <option value="15">15</option>
+              <option value="30">30</option>
+              <option value="45">45</option>
+            </select>
+            <select class="form-select" id="horaSalidaPeriodo" required>
+              <option value="AM">a. m.</option>
+              <option value="PM">p. m.</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="cajaAsistente" class="d-none">
+          <div class="form-section-title">🧭 Asistente de recorrido</div>
+          <div id="contenidoAsistente" class="alert alert-light small mb-3"></div>
+        </div>
+
+        <div class="form-section-title">Contacto de emergencia</div>
+        <p class="text-muted small mb-3">Un familiar o persona cercana a quien podamos llamar si ocurre una emergencia durante tu recorrido.</p>
+
+        <div class="mb-3">
+          <label for="contactoNombre" class="form-label">Nombre del contacto *</label>
+          <input type="text" class="form-control" id="contactoNombre" placeholder="Nombre y apellido" required>
+        </div>
+        <div class="mb-3">
+          <label for="contactoTelefono" class="form-label">Teléfono del contacto *</label>
+          <input type="tel" class="form-control" id="contactoTelefono" placeholder="Ej. 5555-5555 (mínimo 8 dígitos)" required>
+        </div>
+
+        <div class="alert alert-light small">
+          🔒 Por tu privacidad, tu nombre y teléfono (y los de tu contacto de emergencia)
+          se eliminan automáticamente de nuestros sistemas 3 días después del registro.
+        </div>
+
+        <div id="mensajeError" class="alert alert-danger d-none"></div>
+
+        <button type="submit" class="btn btn-volcan btn-lg mt-2" id="btnRevisarIndividual" disabled>
+          Revisar mis datos
+        </button>
+      </form>
+
+      <!-- Paso de confirmacion antes de enviar. Una vez enviado, ya no se puede editar. -->
+      <div id="revisionIndividual" class="card p-4 d-none">
+        <span class="hero-eyebrow">Confirma antes de enviar</span>
+        <h5 class="mb-3">¿Estos datos son correctos?</h5>
+        <div id="resumenIndividual" class="mb-3"></div>
+        <div id="mensajeErrorRevision" class="alert alert-danger d-none"></div>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="btnEditarIndividual" class="btn btn-outline-secondary flex-fill">✏️ Editar datos</button>
+          <button type="button" id="btnConfirmarIndividual" class="btn btn-volcan flex-fill">✅ Confirmar y enviar</button>
         </div>
       </div>
+    </div>
 
-      <div class="mb-3 d-none" id="cajaAgencia">
-        <label for="selectAgencia" class="form-label">Empresa de excursión *</label>
-        <select class="form-select" id="selectAgencia">
-          <option value="">Selecciona la agencia…</option>
-        </select>
-        <div class="form-text">
-          Si la agencia no aparece en la lista, debe ser registrada primero por la Municipalidad desde el panel administrativo.
+    <!-- ============ MODO AGENCIA ============ -->
+    <div id="panelAgencia" class="d-none">
+      <form id="formGrupoAgencia" class="card p-4">
+        <div class="mb-3">
+          <label for="selectAgencia" class="form-label">Empresa de excursión *</label>
+          <select class="form-select" id="selectAgencia" required>
+            <option value="">Selecciona la agencia…</option>
+          </select>
+          <div class="form-text">
+            Si la agencia no aparece en la lista, debe ser registrada primero por la Municipalidad desde el panel administrativo.
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="cantidadGrupo" class="form-label">¿Cuántas personas van a subir? *</label>
+          <input type="number" class="form-control" id="cantidadGrupo" min="1" value="1" required>
+        </div>
+        <div class="mb-3">
+          <label for="fechaSalidaGrupo" class="form-label">¿Qué día suben? *</label>
+          <input type="date" class="form-control" id="fechaSalidaGrupo" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Hora estimada de salida *</label>
+          <div class="d-flex gap-2">
+            <select class="form-select" id="horaSalidaGrupoHora" required>
+              <option value="">Hora</option>
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            </select>
+            <select class="form-select" id="horaSalidaGrupoMinuto" required>
+              <option value="00">00</option>
+              <option value="15">15</option>
+              <option value="30">30</option>
+              <option value="45">45</option>
+            </select>
+            <select class="form-select" id="horaSalidaGrupoPeriodo" required>
+              <option value="AM">a. m.</option>
+              <option value="PM">p. m.</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="mensajeErrorGrupo" class="alert alert-danger d-none"></div>
+
+        <button type="submit" class="btn btn-volcan btn-lg mt-2" id="btnIniciarGrupo" disabled>
+          Iniciar registro del grupo
+        </button>
+      </form>
+
+      <div id="cajaListaGrupo" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h5 class="mb-0">Excursionistas del grupo</h5>
+          <span class="chip" id="contadorGrupo">0 / 0 registrados</span>
+        </div>
+
+        <form id="formPersonaGrupo" class="card p-3 mb-3">
+          <input type="hidden" id="idEdicionGrupo" value="">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label">Nombre completo *</label>
+              <input type="text" class="form-control" id="nombreGrupo" placeholder="Ej. Juan Pérez" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Teléfono *</label>
+              <input type="tel" class="form-control" id="telefonoGrupo" placeholder="Mínimo 8 dígitos" required>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-volcan w-100" id="btnAgregarGrupo">Agregar</button>
+            </div>
+          </div>
+          <div id="mensajeErrorGrupoPersona" class="alert alert-danger d-none mt-2 mb-0"></div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaGrupo">
+              <tr><td colspan="3" class="text-muted text-center">Aún no hay excursionistas registrados en este grupo.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="avisoGrupoCompleto" class="alert alert-success d-none">
+          ✅ Grupo completo. Ya registraste a todos los excursionistas indicados.
+          <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="location.reload()">Registrar otro grupo</button>
         </div>
       </div>
-
-      <div id="avisoRegistroAgencia" class="alert alert-light small d-none">
-        Después de registrar a este excursionista podrás agregar al siguiente de la misma agencia sin volver a seleccionarla.
-      </div>
-
-      <div class="mb-3">
-        <label for="nombre" class="form-label">Nombre completo *</label>
-        <input type="text" class="form-control" id="nombre" placeholder="Ej. Juan Pérez" required>
-      </div>
-      <div class="mb-3">
-        <label for="telefono" class="form-label">Teléfono *</label>
-        <input type="tel" class="form-control" id="telefono" placeholder="Ej. 5555-5555 (mínimo 8 dígitos)" required>
-      </div>
-      <div class="mb-3">
-        <label for="dpi" class="form-label">DPI (opcional)</label>
-        <input type="text" class="form-control" id="dpi">
-      </div>
-      <div class="mb-3">
-        <label for="personasGrupo" class="form-label">Número de personas en el grupo</label>
-        <input type="number" class="form-control" id="personasGrupo" value="1" min="1">
-      </div>
-      <div class="mb-3">
-        <label for="fechaSalida" class="form-label">¿Qué día vas a subir? *</label>
-        <input type="date" class="form-control" id="fechaSalida" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Hora estimada de salida *</label>
-        <div class="d-flex gap-2">
-          <select class="form-select" id="horaSalidaHora" required>
-            <option value="">Hora</option>
-            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-            <option value="7">7</option><option value="8">8</option><option value="9">9</option>
-            <option value="10">10</option><option value="11">11</option><option value="12">12</option>
-          </select>
-          <select class="form-select" id="horaSalidaMinuto" required>
-            <option value="00">00</option>
-            <option value="15">15</option>
-            <option value="30">30</option>
-            <option value="45">45</option>
-          </select>
-          <select class="form-select" id="horaSalidaPeriodo" required>
-            <option value="AM">a. m.</option>
-            <option value="PM">p. m.</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="cajaAsistente" class="d-none">
-        <div class="form-section-title">🧭 Asistente de recorrido</div>
-        <div id="contenidoAsistente" class="alert alert-light small mb-3"></div>
-      </div>
-
-      <div class="form-section-title">Contacto de emergencia</div>
-      <p class="text-muted small mb-3">Un familiar o persona cercana a quien podamos llamar si ocurre una emergencia durante tu recorrido.</p>
-
-      <div class="mb-3">
-        <label for="contactoNombre" class="form-label">Nombre del contacto *</label>
-        <input type="text" class="form-control" id="contactoNombre" placeholder="Nombre y apellido" required>
-      </div>
-      <div class="mb-3">
-        <label for="contactoTelefono" class="form-label">Teléfono del contacto *</label>
-        <input type="tel" class="form-control" id="contactoTelefono" placeholder="Ej. 5555-5555 (mínimo 8 dígitos)" required>
-      </div>
-
-      <div class="alert alert-light small">
-        🔒 Por tu privacidad, tu nombre y teléfono (y los de tu contacto de emergencia)
-        se eliminan automáticamente de nuestros sistemas 3 días después del registro.
-      </div>
-
-      <div id="mensajeError" class="alert alert-danger d-none"></div>
-
-      <button type="submit" class="btn btn-volcan btn-lg mt-2" id="btnRegistrar" disabled>
-        Registrar e iniciar monitoreo
-      </button>
-    </form>
+    </div>
   </main>
 
   <footer class="footer-volcan">
