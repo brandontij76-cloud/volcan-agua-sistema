@@ -17,6 +17,32 @@ if (!excursionistaId) {
 const INTERVALO_ENVIO_MS = 30000; // 30 segundos
 
 let mapa, marcadorActual, ultimaPosicion = null;
+let kmRecorridosActual = null;
+
+function escaparHtml(texto) {
+  const div = document.createElement('div');
+  div.textContent = texto;
+  return div.innerHTML;
+}
+
+// Icono tipo "Google Maps" (persona caminando 🚶) con el nombre y los
+// kilometros recorridos como etiqueta encima, igual que en el panel
+// administrativo, para que el propio excursionista vea su avance.
+function iconoPropio() {
+  const km = kmRecorridosActual != null ? ` · ${kmRecorridosActual.toFixed(1)} km` : '';
+  const etiqueta = `${nombreExcursionista}${km}`;
+  return L.divIcon({
+    className: '',
+    html: `
+      <div class="marcador-excursionista">
+        <div class="etiqueta-nombre">${escaparHtml(etiqueta)}</div>
+        <div class="icono-caminando">🚶</div>
+      </div>
+    `,
+    iconSize: [0, 0],
+    iconAnchor: [12, 12],
+  });
+}
 
 function iniciarMapa(latInicial, lngInicial) {
   mapa = L.map('mapa').setView([latInicial, lngInicial], 14);
@@ -25,7 +51,7 @@ function iniciarMapa(latInicial, lngInicial) {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(mapa);
 
-  marcadorActual = L.marker([latInicial, lngInicial]).addTo(mapa).bindPopup('Tu ubicacion actual');
+  marcadorActual = L.marker([latInicial, lngInicial], { icon: iconoPropio() }).addTo(mapa);
 
   // Dibuja la ruta de referencia hacia el Volcan de Agua.
   fetch('/api/ruta-referencia')
@@ -45,8 +71,20 @@ function actualizarMarcador(lat, lng) {
     iniciarMapa(lat, lng);
   } else {
     marcadorActual.setLatLng([lat, lng]);
+    marcadorActual.setIcon(iconoPropio());
     mapa.panTo([lat, lng]);
   }
+}
+
+// Refresca solo la etiqueta (nombre + km) del marcador sin mover el mapa,
+// y el numero de km en la ficha de ruta, cuando llega un nuevo progreso
+// calculado por el servidor.
+function actualizarProgreso(km) {
+  if (km == null) return;
+  kmRecorridosActual = km;
+  if (marcadorActual) marcadorActual.setIcon(iconoPropio());
+  const elFicha = document.getElementById('fichaProgresoKm');
+  if (elFicha) elFicha.textContent = `${km.toFixed(1)} km`;
 }
 
 function mostrarAlerta(alerta) {
@@ -70,6 +108,7 @@ async function enviarUbicacionAlServidor(lat, lng) {
     const resultado = await respuesta.json();
     document.getElementById('ultimoEnvio').textContent = new Date().toLocaleTimeString('es-GT');
     mostrarAlerta(resultado.alerta);
+    actualizarProgreso(resultado.kmRecorridos);
   } catch (error) {
     console.error('No se pudo enviar la ubicacion:', error);
   }

@@ -25,33 +25,33 @@
 
     <div id="fichaRutaMonitor" class="mb-4"></div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-lg-8">
-        <div id="mapa"></div>
-      </div>
-      <div class="col-lg-4">
-        <div class="card p-3 h-100 d-flex flex-column">
-          <h6 class="text-uppercase text-muted small mb-3" style="letter-spacing:0.05em;">Estado del monitoreo</h6>
+    <div class="card p-3 mb-3">
+      <div class="row align-items-center g-3">
+        <div class="col-md-4">
+          <h6 class="text-uppercase text-muted small mb-2" style="letter-spacing:0.05em;">Estado del monitoreo</h6>
           <p class="mb-1">GPS: <span id="estadoGps" class="fw-bold">Esperando permiso…</span></p>
           <p class="mb-1">Último envío: <span id="ultimoEnvio">--</span></p>
-          <p class="mb-3">Precisión: <span id="precisionGps">--</span></p>
-
-          <div id="chipCima" class="chip mb-3 d-none">🏔️ Cima confirmada</div>
-
-          <button id="btnCima" class="btn btn-cima w-100 mb-2">
-            🏔️ Llegué a la cima
-          </button>
-          <button id="btnPanico" class="btn btn-panico w-100 mb-2">
-            🆘 Botón de emergencia
-          </button>
-          <button id="btnFinalizar" class="btn btn-outline-secondary w-100 mt-auto">
-            Finalizar recorrido (regresé al pueblo)
-          </button>
-
+          <p class="mb-0">Precisión: <span id="precisionGps">--</span></p>
+          <div id="chipCima" class="chip mt-2 d-none">🏔️ Cima confirmada</div>
+        </div>
+        <div class="col-md-8">
+          <div class="d-flex flex-wrap gap-2">
+            <button id="btnCima" class="btn btn-cima flex-fill">
+              🏔️ Llegué a la cima
+            </button>
+            <button id="btnPanico" class="btn btn-panico flex-fill">
+              🆘 Botón de emergencia
+            </button>
+            <button id="btnFinalizar" class="btn btn-outline-secondary flex-fill">
+              Finalizar recorrido (regresé al pueblo)
+            </button>
+          </div>
           <div id="mensajeAlerta" class="alert alert-warning mt-3 d-none"></div>
         </div>
       </div>
     </div>
+
+    <div id="mapa" class="mb-3"></div>
   </main>
 
   <footer class="footer-volcan">
@@ -63,7 +63,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/fichaRuta.js"></script>
   <script src="js/monitor.js"></script>
-  <script>iniciarFichaRuta('fichaRutaMonitor');</script>
+  <script>iniciarFichaRuta('fichaRutaMonitor', { mostrarDificultad: false });</script>
   <script src="js/chatbot.js"></script>
   <script>iniciarChatbot('usuario');</script>
 </body>

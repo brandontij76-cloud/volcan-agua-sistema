@@ -297,10 +297,12 @@ function distanciaHaversine(a, b) {
   return 2 * RADIO_TIERRA_METROS * Math.asin(Math.sqrt(h));
 }
 
-// Distancia aproximada de un punto al segmento formado por p1-p2.
-// Se trabaja en un plano local (valido para distancias cortas como un
-// sendero de montana) para no complicar la proyeccion esferica.
-function distanciaPuntoASegmento(punto, p1, p2) {
+// Proyecta un punto sobre el segmento formado por p1-p2 y devuelve tanto la
+// distancia perpendicular (en metros) como "t" (0 a 1: que tan avanzado esta
+// el punto proyectado dentro del segmento). Se trabaja en un plano local
+// (valido para distancias cortas como un sendero de montana) para no
+// complicar la proyeccion esferica.
+function proyectarPuntoEnSegmento(punto, p1, p2) {
   const metrosPorGradoLat = 111320;
   const metrosPorGradoLng = 111320 * Math.cos(aRadianes(punto.lat));
 
@@ -324,7 +326,12 @@ function distanciaPuntoASegmento(punto, p1, p2) {
   const dPx = P.x - proyeccion.x;
   const dPy = P.y - proyeccion.y;
 
-  return Math.sqrt(dPx * dPx + dPy * dPy);
+  return { distancia: Math.sqrt(dPx * dPx + dPy * dPy), t };
+}
+
+// Distancia aproximada de un punto al segmento formado por p1-p2, en metros.
+function distanciaPuntoASegmento(punto, p1, p2) {
+  return proyectarPuntoEnSegmento(punto, p1, p2).distancia;
 }
 
 // Distancia minima de un punto a la ruta completa (al segmento mas cercano).
@@ -335,6 +342,32 @@ function distanciaARuta(punto, ruta = RUTA_REFERENCIA_VOLCAN_DE_AGUA) {
     if (d < minima) minima = d;
   }
   return minima;
+}
+
+// Progreso a lo largo de la ruta: encuentra el segmento mas cercano al punto
+// dado y devuelve la distancia acumulada (en km) desde el inicio de la traza
+// hasta la proyeccion del punto en ese segmento. Sirve para mostrarle al
+// excursionista (y al panel administrativo) cuantos kilometros lleva
+// recorridos, sin necesitar GPS de alta precision constante.
+function progresoEnRutaKm(punto, ruta = RUTA_REFERENCIA_VOLCAN_DE_AGUA) {
+  let mejorDistancia = Infinity;
+  let mejorProgresoMetros = 0;
+  let acumuladoMetros = 0;
+
+  for (let i = 0; i < ruta.length - 1; i++) {
+    const p1 = ruta[i];
+    const p2 = ruta[i + 1];
+    const largoSegmento = distanciaHaversine(p1, p2);
+    const { distancia, t } = proyectarPuntoEnSegmento(punto, p1, p2);
+
+    if (distancia < mejorDistancia) {
+      mejorDistancia = distancia;
+      mejorProgresoMetros = acumuladoMetros + t * largoSegmento;
+    }
+    acumuladoMetros += largoSegmento;
+  }
+
+  return Math.round((mejorProgresoMetros / 1000) * 10) / 10; // km, 1 decimal
 }
 
 /**
@@ -421,6 +454,7 @@ module.exports = {
   INFO_RUTA_VOLCAN_DE_AGUA,
   distanciaHaversine,
   distanciaARuta,
+  progresoEnRutaKm,
   analizarUbicacion,
   estaEnLaCima,
   regresoAlPueblo,

@@ -92,7 +92,8 @@ async function cargarTiempoReal() {
     activos
       .filter((e) => e.ubicacionActual)
       .forEach((e) => {
-        const etiqueta = e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre;
+        const km = e.ubicacionActual.kmRecorridos != null ? ` · ${e.ubicacionActual.kmRecorridos.toFixed(1)} km` : '';
+        const etiqueta = (e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre) + km;
         const icono = L.divIcon({
           className: '',
           html: `

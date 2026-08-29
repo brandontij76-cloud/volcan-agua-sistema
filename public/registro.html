@@ -32,6 +32,30 @@
 
     <form id="formRegistro" class="card p-4">
       <div class="mb-3">
+        <label class="form-label d-block">¿Cómo te vas a registrar? *</label>
+        <div class="toggle-modo-registro">
+          <input type="radio" name="modoRegistro" id="modoIndividual" value="individual" checked>
+          <label for="modoIndividual">🧍 Voy por mi cuenta</label>
+          <input type="radio" name="modoRegistro" id="modoAgencia" value="agencia">
+          <label for="modoAgencia">🏢 Registro de una agencia</label>
+        </div>
+      </div>
+
+      <div class="mb-3 d-none" id="cajaAgencia">
+        <label for="selectAgencia" class="form-label">Empresa de excursión *</label>
+        <select class="form-select" id="selectAgencia">
+          <option value="">Selecciona la agencia…</option>
+        </select>
+        <div class="form-text">
+          Si la agencia no aparece en la lista, debe ser registrada primero por la Municipalidad desde el panel administrativo.
+        </div>
+      </div>
+
+      <div id="avisoRegistroAgencia" class="alert alert-light small d-none">
+        Después de registrar a este excursionista podrás agregar al siguiente de la misma agencia sin volver a seleccionarla.
+      </div>
+
+      <div class="mb-3">
         <label for="nombre" class="form-label">Nombre completo *</label>
         <input type="text" class="form-control" id="nombre" placeholder="Ej. Juan Pérez" required>
       </div>

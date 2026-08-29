@@ -63,6 +63,47 @@ function solicitarUbicacion() {
 document.getElementById('btnActivarGps').addEventListener('click', solicitarUbicacion);
 solicitarUbicacion(); // se pide automaticamente al cargar la pagina
 
+// ---------------------------------------------------------------------
+// Modo de registro: "individual" (el propio excursionista, inicia su
+// monitoreo en este dispositivo) o "agencia" (un representante registra
+// a varios excursionistas de una empresa de excursion, uno tras otro,
+// desde el mismo dispositivo, sin iniciar monitoreo GPS para si mismo).
+// ---------------------------------------------------------------------
+const cajaAgencia = document.getElementById('cajaAgencia');
+const selectAgencia = document.getElementById('selectAgencia');
+const avisoRegistroAgencia = document.getElementById('avisoRegistroAgencia');
+const btnRegistrarTexto = { individual: 'Registrar e iniciar monitoreo', agencia: 'Registrar excursionista de la agencia' };
+
+function modoActual() {
+  return document.querySelector('input[name="modoRegistro"]:checked').value;
+}
+
+function actualizarModoRegistro() {
+  const modo = modoActual();
+  const esAgencia = modo === 'agencia';
+  cajaAgencia.classList.toggle('d-none', !esAgencia);
+  avisoRegistroAgencia.classList.toggle('d-none', !esAgencia);
+  selectAgencia.required = esAgencia;
+  document.getElementById('btnRegistrar').textContent = btnRegistrarTexto[modo];
+}
+
+document.querySelectorAll('input[name="modoRegistro"]').forEach((input) => {
+  input.addEventListener('change', actualizarModoRegistro);
+});
+
+// Carga la lista de agencias ya creadas por la Municipalidad (panel admin).
+fetch('/api/agencias')
+  .then((r) => r.json())
+  .then((agencias) => {
+    agencias.forEach((a) => {
+      const opcion = document.createElement('option');
+      opcion.value = a.id;
+      opcion.textContent = a.nombre;
+      selectAgencia.appendChild(opcion);
+    });
+  })
+  .catch((error) => console.error('No se pudo cargar la lista de agencias:', error));
+
 // Fecha minima seleccionable: hoy (no tiene sentido registrar una subida en el pasado).
 document.getElementById('fechaSalida').min = new Date().toISOString().split('T')[0];
 
@@ -237,6 +278,13 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
     return;
   }
 
+  const modo = modoActual();
+  if (modo === 'agencia' && !selectAgencia.value) {
+    mensajeError.textContent = 'Selecciona la agencia de excursión.';
+    mensajeError.classList.remove('d-none');
+    return;
+  }
+
   const datos = {
     nombre,
     telefono,
@@ -247,6 +295,7 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
     contactoEmergenciaNombre: contactoNombre,
     contactoEmergenciaTelefono: contactoTelefono,
     ubicacionRegistro,
+    agenciaId: modo === 'agencia' ? selectAgencia.value : null,
   };
 
   btn.disabled = true;
@@ -265,12 +314,27 @@ document.getElementById('formRegistro').addEventListener('submit', async (evento
       throw new Error(resultado.error || 'No se pudo completar el registro.');
     }
 
-    // Redirige a la pantalla de monitoreo, pasando el id del excursionista.
-    window.location.href = `monitor.html?id=${resultado.id}&nombre=${encodeURIComponent(resultado.nombre)}`;
+    if (modo === 'agencia') {
+      // Un representante de la agencia puede seguir registrando a mas
+      // excursionistas uno tras otro, sin salir de esta pagina ni iniciar
+      // el monitoreo GPS de su propio dispositivo.
+      avisoRegistroAgencia.className = 'alert alert-success small';
+      avisoRegistroAgencia.textContent = `✅ ${resultado.nombre} fue registrado. Puedes registrar al siguiente excursionista de esta misma agencia.`;
+      ['nombre', 'telefono', 'dpi', 'contactoNombre', 'contactoTelefono'].forEach((id) => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('personasGrupo').value = 1;
+      btn.disabled = false;
+      btn.textContent = btnRegistrarTexto.agencia;
+      document.getElementById('nombre').focus();
+    } else {
+      // Redirige a la pantalla de monitoreo, pasando el id del excursionista.
+      window.location.href = `monitor.html?id=${resultado.id}&nombre=${encodeURIComponent(resultado.nombre)}`;
+    }
   } catch (error) {
     mensajeError.textContent = error.message;
     mensajeError.classList.remove('d-none');
     btn.disabled = false;
-    btn.textContent = 'Registrar e iniciar monitoreo';
+    btn.textContent = btnRegistrarTexto[modo];
   }
 });

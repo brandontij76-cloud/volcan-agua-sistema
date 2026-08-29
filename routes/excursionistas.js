@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
-const { analizarUbicacion, estaEnLaCima, regresoAlPueblo } = require('../services/deteccionAnomalias');
+const { analizarUbicacion, estaEnLaCima, regresoAlPueblo, progresoEnRutaKm } = require('../services/deteccionAnomalias');
 const { registrarAlerta } = require('../services/gestionAlertas');
 
 // ---------------------------------------------------------------------
@@ -156,9 +156,14 @@ router.post('/:id/ubicacion', async (req, res) => {
     // 1) Deteccion de anomalias / alertas predictivas / clasificacion de emergencia
     const alertaGenerada = analizarUbicacion(excursionista, nuevaUbicacion);
 
+    // 1.5) Progreso a lo largo de la ruta (para mostrar "X km recorridos"
+    // en el mapa del propio excursionista y en el panel administrativo).
+    const kmRecorridos = progresoEnRutaKm(nuevaUbicacion);
+    const ubicacionConProgreso = { ...nuevaUbicacion, kmRecorridos };
+
     // 2) Guardar la nueva ubicacion y el historial de recorrido
     await ref.update({
-      ubicacionActual: nuevaUbicacion,
+      ubicacionActual: ubicacionConProgreso,
       [`historialUbicaciones/${nuevaUbicacion.timestamp}`]: nuevaUbicacion,
     });
 
@@ -177,7 +182,7 @@ router.post('/:id/ubicacion', async (req, res) => {
       });
     }
 
-    res.json({ ubicacionActual: nuevaUbicacion, alerta: alertaGuardada });
+    res.json({ ubicacionActual: ubicacionConProgreso, alerta: alertaGuardada, kmRecorridos });
   } catch (error) {
     console.error('Error al actualizar ubicacion:', error);
     res.status(500).json({ error: 'No se pudo actualizar la ubicacion.' });

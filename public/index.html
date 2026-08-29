@@ -18,8 +18,16 @@
       </button>
       <div class="collapse navbar-collapse" id="navMenu">
         <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-          <li class="nav-item"><a class="nav-link" href="registro.html">Registrar recorrido</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.html">Panel administrativo</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="menuAcceso" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Iniciar sesión
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="menuAcceso">
+              <li><a class="dropdown-item" href="registro.html">👤 Excursionista</a></li>
+              <li><a class="dropdown-item" href="colaborador.html">🧑‍🤝‍🧑 Colaborador</a></li>
+              <li><a class="dropdown-item" href="admin.html">🛠️ Panel administrativo</a></li>
+            </ul>
+          </li>
         </ul>
       </div>
     </div>
@@ -35,7 +43,6 @@
       </p>
       <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
         <a href="registro.html" class="btn btn-volcan btn-lg">Registrar mi recorrido</a>
-        <a href="admin.html" class="btn btn-outline-light btn-lg">Panel administrativo</a>
       </div>
     </div>
   </header>
@@ -67,10 +74,9 @@
 
     <div class="alert alert-light mt-5 d-flex align-items-center justify-content-between flex-wrap gap-3">
       <div>
-        <strong class="text-white">¿Eres parte del equipo administrativo?</strong>
-        <div class="text-muted">Mira en tiempo real quién está en el volcán, revisa alertas y confirma regresos.</div>
+        <strong class="text-white">¿Eres parte del equipo o colaboras con la Municipalidad?</strong>
+        <div class="text-muted">Usa "Iniciar sesión" arriba para entrar al panel administrativo o de colaborador.</div>
       </div>
-      <a href="admin.html" class="btn btn-ambar">Ir al panel &rarr;</a>
     </div>
   </main>
 

@@ -349,6 +349,61 @@ a:hover { color: var(--ambar); }
 }
 .form-control::placeholder { color: var(--texto-tenue); }
 
+/* Las opciones de un <select> las dibuja el sistema operativo/navegador,
+   no el CSS del sitio. Sin esto, en temas oscuros el texto y el fondo
+   pueden quedar casi del mismo color (texto claro sobre fondo claro). */
+.form-select option {
+  background-color: var(--bg-card);
+  color: var(--texto-principal);
+}
+
+/* Menu desplegable del navbar (selector de acceso: excursionista /
+   colaborador / panel administrativo). */
+.navbar .dropdown-menu {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 0.4rem;
+}
+.navbar .dropdown-item {
+  color: var(--texto-principal);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+}
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+  background-color: var(--bg-card-soft);
+  color: var(--ambar);
+}
+
+/* Toggle "Individual / Por agencia" en el registro */
+.toggle-modo-registro {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+.toggle-modo-registro label {
+  flex: 1;
+  text-align: center;
+  padding: 0.7rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--input-bg);
+  color: var(--texto-suave);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.toggle-modo-registro input {
+  display: none;
+}
+.toggle-modo-registro input:checked + label {
+  background: var(--ambar);
+  color: #1a1206;
+  border-color: var(--ambar);
+}
+
 .form-section-title {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;

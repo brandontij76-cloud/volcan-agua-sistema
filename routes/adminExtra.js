@@ -92,8 +92,18 @@ router.get('/exportar', async (req, res) => {
       // Nombre de hoja: Excel no permite ciertos caracteres ni mas de 31.
       const nombreHoja = agencia.nombre.replace(/[\\/*?:\[\]]/g, '').substring(0, 31) || 'Agencia';
       const hoja = libro.addWorksheet(nombreHoja);
-      hoja.columns = columnas;
-      hoja.getRow(1).font = { bold: true };
+      hoja.columns = columnas.map((c) => ({ key: c.key, width: c.width }));
+
+      // Encabezado visible con el nombre de la empresa (ademas del nombre
+      // de la pestaña), para que quede claro al abrir la hoja a cual
+      // agencia pertenece esta lista de excursionistas.
+      const filaTitulo = hoja.addRow([`Empresa de excursión: ${agencia.nombre}`]);
+      hoja.mergeCells(filaTitulo.number, 1, filaTitulo.number, columnas.length);
+      filaTitulo.font = { bold: true, size: 13 };
+
+      const filaEncabezados = hoja.addRow(columnas.map((c) => c.header));
+      filaEncabezados.font = { bold: true };
+
       lista
         .sort((a, b) => (b.fechaRegistro || 0) - (a.fechaRegistro || 0))
         .forEach((e) => hoja.addRow(filaDeExcursionista(e)));
@@ -106,8 +116,15 @@ router.get('/exportar', async (req, res) => {
     });
 
     const hojaSinAgencia = libro.addWorksheet('Sin agencia');
-    hojaSinAgencia.columns = columnas;
-    hojaSinAgencia.getRow(1).font = { bold: true };
+    hojaSinAgencia.columns = columnas.map((c) => ({ key: c.key, width: c.width }));
+
+    const filaTituloSinAgencia = hojaSinAgencia.addRow(['Excursionistas independientes (sin agencia)']);
+    hojaSinAgencia.mergeCells(filaTituloSinAgencia.number, 1, filaTituloSinAgencia.number, columnas.length);
+    filaTituloSinAgencia.font = { bold: true, size: 13 };
+
+    const filaEncabezadosSinAgencia = hojaSinAgencia.addRow(columnas.map((c) => c.header));
+    filaEncabezadosSinAgencia.font = { bold: true };
+
     sinAgencia
       .sort((a, b) => (b.fechaRegistro || 0) - (a.fechaRegistro || 0))
       .forEach((e) => hojaSinAgencia.addRow(filaDeExcursionista(e)));

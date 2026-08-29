@@ -50,8 +50,13 @@ function claseDificultad(dificultad) {
 /**
  * Pinta la ficha de ruta dentro del contenedor indicado.
  * @param {string} idContenedor - id del elemento donde se inserta la tarjeta
+ * @param {object} [opciones] - { mostrarDificultad: boolean }. Si se pasa
+ *   mostrarDificultad:false, en vez del badge de dificultad se deja un
+ *   marcador de "Progreso" (id="fichaProgresoKm") que otra pantalla
+ *   (por ejemplo monitor.js) puede ir actualizando en vivo.
  */
-async function iniciarFichaRuta(idContenedor) {
+async function iniciarFichaRuta(idContenedor, opciones = {}) {
+  const mostrarDificultad = opciones.mostrarDificultad !== false;
   const contenedor = document.getElementById(idContenedor);
   if (!contenedor) return;
 
@@ -82,8 +87,13 @@ async function iniciarFichaRuta(idContenedor) {
             <div class="ficha-ruta-metrica-valor">${infoRuta.desnivelM} m</div>
           </div>
           <div class="col-4">
-            <div class="ficha-ruta-metrica-label">Dificultad</div>
-            <span class="badge ${claseDificultad(infoRuta.dificultad)}">${infoRuta.dificultad}</span>
+            ${mostrarDificultad ? `
+              <div class="ficha-ruta-metrica-label">Dificultad</div>
+              <span class="badge ${claseDificultad(infoRuta.dificultad)}">${infoRuta.dificultad}</span>
+            ` : `
+              <div class="ficha-ruta-metrica-label">Progreso</div>
+              <div class="ficha-ruta-metrica-valor" id="fichaProgresoKm">0.0 km</div>
+            `}
           </div>
         </div>
         <div class="ficha-ruta-clima">
