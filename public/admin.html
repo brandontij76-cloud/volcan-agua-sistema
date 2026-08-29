@@ -205,6 +205,80 @@
             </div>
           </div>
         </div>
+
+        <hr class="my-4">
+
+        <h5 class="mb-1">Cargar lista de excursionistas de una agencia</h5>
+        <p class="text-muted small mb-3">
+          Cuando una empresa de excursión envía su lista de personas, cárgala aquí (nombre y teléfono de cada una).
+          Cada persona podrá buscar su propio nombre en el registro público y confirmar con su teléfono para activar su monitoreo GPS.
+        </p>
+        <div class="row g-4">
+          <div class="col-lg-5">
+            <div class="card p-3">
+              <div class="mb-2">
+                <label class="form-label">Agencia *</label>
+                <select class="form-select" id="selectAgenciaLista">
+                  <option value="">Selecciona una agencia…</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Día de salida del grupo *</label>
+                <input type="date" class="form-control" id="fechaSalidaLista">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Hora estimada de salida *</label>
+                <div class="d-flex gap-2">
+                  <select class="form-select" id="horaSalidaListaHora">
+                    <option value="">Hora</option>
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                    <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                    <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                    <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                  </select>
+                  <select class="form-select" id="horaSalidaListaMinuto">
+                    <option value="00">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                  <select class="form-select" id="horaSalidaListaPeriodo">
+                    <option value="AM">a. m.</option>
+                    <option value="PM">p. m.</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Lista (una persona por línea): <code>Nombre completo, Teléfono</code></label>
+                <textarea class="form-control" id="textareaListaAgencia" rows="6" placeholder="Juan Pérez, 55551111&#10;Maria Gómez, 55552222"></textarea>
+              </div>
+              <div id="errorListaAgencia" class="alert alert-danger d-none py-2 my-2"></div>
+              <div id="exitoListaAgencia" class="alert alert-success d-none py-2 my-2"></div>
+              <button class="btn btn-volcan mt-2" id="btnCargarListaAgencia">Cargar lista</button>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="mb-0">Lista actual de la agencia seleccionada</h6>
+              <button class="btn btn-sm btn-outline-secondary" id="btnActualizarListaAgencia">Actualizar</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tablaListaAgencia">
+                  <tr><td colspan="4" class="text-muted text-center">Selecciona una agencia para ver su lista.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ============ PESTAÑA: COLABORADORES ============ -->

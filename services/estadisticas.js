@@ -13,7 +13,7 @@ async function calcularEstadisticasSemanales(db) {
     db.ref('alertas').once('value'),
   ]);
 
-  const excursionistas = Object.values(snapExc.val() || {});
+  const excursionistas = Object.values(snapExc.val() || {}).filter((e) => e.estado !== 'pendiente');
   const alertas = Object.values(snapAlertas.val() || {});
 
   const ahora = Date.now();

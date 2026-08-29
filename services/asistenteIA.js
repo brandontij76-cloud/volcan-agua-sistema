@@ -173,7 +173,7 @@ async function calcularEstadisticasHistoricas(db, horaSalida) {
       db.ref('alertas').once('value'),
     ]);
 
-    const excursionistas = Object.values(snapshotExcursionistas.val() || {});
+    const excursionistas = Object.values(snapshotExcursionistas.val() || {}).filter((e) => e.estado !== 'pendiente');
     const alertas = Object.values(snapshotAlertas.val() || {});
 
     const idsConAlerta = new Set(alertas.map((a) => a.excursionistaId));

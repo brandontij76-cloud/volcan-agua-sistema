@@ -29,7 +29,7 @@ router.get('/exportar', async (req, res) => {
       db.ref('excursionistas').once('value'),
       db.ref('agencias').once('value'),
     ]);
-    const excursionistas = Object.values(snapExc.val() || {});
+    const excursionistas = Object.values(snapExc.val() || {}).filter((e) => e.estado !== 'pendiente');
     const agencias = Object.values(snapAgencias.val() || {});
 
     const libro = new ExcelJS.Workbook();

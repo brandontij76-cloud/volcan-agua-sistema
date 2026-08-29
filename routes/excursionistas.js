@@ -87,7 +87,7 @@ router.post('/', async (req, res) => {
       fechaSalidaEstimada: fechaSalidaEstimada || null,
       horaSalidaEstimada: horaSalidaEstimada || null,
       contactoEmergenciaNombre: contactoEmergenciaNombre || null,
-      contactoEmergenciaTelefono,
+      contactoEmergenciaTelefono: contactoEmergenciaTelefono || null,
       ubicacionRegistro,
       agenciaId: agenciaId || null,
       estado: 'activo', // activo | finalizado
@@ -107,6 +107,9 @@ router.post('/', async (req, res) => {
 // GET /api/excursionistas
 // Lista todos los excursionistas (para el panel administrativo).
 // Filtro opcional: /api/excursionistas?estado=activo
+// Nota: sin filtro de estado, no se incluyen los "pendientes" de una
+// agencia (nombres precargados por la Municipalidad que todavia nadie
+// confirma) — esos no son excursionistas reales todavia.
 router.get('/', async (req, res) => {
   try {
     const snapshot = await db.ref('excursionistas').once('value');
@@ -115,6 +118,8 @@ router.get('/', async (req, res) => {
 
     if (req.query.estado) {
       lista = lista.filter((e) => e.estado === req.query.estado);
+    } else {
+      lista = lista.filter((e) => e.estado !== 'pendiente');
     }
 
     lista.sort((a, b) => b.fechaRegistro - a.fechaRegistro);
@@ -122,6 +127,98 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error al listar excursionistas:', error);
     res.status(500).json({ error: 'No se pudo obtener la lista de excursionistas.' });
+  }
+});
+
+// GET /api/excursionistas/agencia/:agenciaId/pendientes
+// Lista PUBLICA (sin telefono) de los nombres que una agencia ya cargo por
+// adelantado (via el panel administrativo) y que aun nadie ha confirmado.
+// La usa registro.html para que el excursionista busque y seleccione su
+// propio nombre antes de confirmar con su telefono.
+router.get('/agencia/:agenciaId/pendientes', async (req, res) => {
+  try {
+    const snapshot = await db.ref('excursionistas').once('value');
+    const datos = snapshot.val() || {};
+    const pendientes = Object.values(datos)
+      .filter((e) => e.agenciaId === req.params.agenciaId && e.estado === 'pendiente')
+      .map((e) => ({ id: e.id, nombre: e.nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    res.json(pendientes);
+  } catch (error) {
+    console.error('Error al listar pendientes de agencia:', error);
+    res.status(500).json({ error: 'No se pudo obtener la lista.' });
+  }
+});
+
+// GET /api/excursionistas/agencia/:agenciaId/completo
+// Vista PARA EL PANEL ADMINISTRATIVO: todos los excursionistas de una
+// agencia (pendientes y ya confirmados), con telefono incluido, para que
+// la Municipalidad revise la lista que cargo y corrija errores.
+router.get('/agencia/:agenciaId/completo', async (req, res) => {
+  try {
+    const snapshot = await db.ref('excursionistas').once('value');
+    const datos = snapshot.val() || {};
+    const lista = Object.values(datos)
+      .filter((e) => e.agenciaId === req.params.agenciaId)
+      .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+    res.json(lista);
+  } catch (error) {
+    console.error('Error al listar la lista completa de agencia:', error);
+    res.status(500).json({ error: 'No se pudo obtener la lista.' });
+  }
+});
+
+// POST /api/excursionistas/agencia/:agenciaId/lista
+// El panel administrativo carga por adelantado la lista de nombres y
+// telefonos que la agencia de turismo envio, junto con la fecha/hora de
+// salida del grupo. Cada persona queda en estado "pendiente" hasta que
+// ella misma confirme su registro en registro.html (buscando su nombre
+// y escribiendo su telefono).
+router.post('/agencia/:agenciaId/lista', async (req, res) => {
+  try {
+    const { personas, fechaSalidaEstimada, horaSalidaEstimada } = req.body;
+
+    if (!Array.isArray(personas) || personas.length === 0) {
+      return res.status(400).json({ error: 'Debes incluir al menos una persona en la lista.' });
+    }
+
+    const errores = [];
+    personas.forEach((p, i) => {
+      if (!nombreValido(p.nombre)) errores.push(`Línea ${i + 1}: nombre inválido ("${p.nombre || ''}").`);
+      if (!telefonoValido(p.telefono)) errores.push(`Línea ${i + 1}: teléfono inválido ("${p.telefono || ''}").`);
+    });
+    if (errores.length > 0) {
+      return res.status(400).json({ error: errores.join(' ') });
+    }
+
+    let creados = 0;
+    for (const p of personas) {
+      const ref = db.ref('excursionistas').push();
+      const excursionista = {
+        id: ref.key,
+        nombre: p.nombre,
+        telefono: p.telefono,
+        dpi: null,
+        personasGrupo: 1,
+        fechaSalidaEstimada: fechaSalidaEstimada || null,
+        horaSalidaEstimada: horaSalidaEstimada || null,
+        contactoEmergenciaNombre: null,
+        contactoEmergenciaTelefono: null,
+        ubicacionRegistro: null,
+        agenciaId: req.params.agenciaId,
+        estado: 'pendiente',
+        fechaRegistro: Date.now(),
+        ubicacionActual: null,
+        historialUbicaciones: {},
+      };
+      await ref.set(excursionista);
+      creados += 1;
+    }
+
+    res.status(201).json({ creados });
+  } catch (error) {
+    console.error('Error al cargar la lista de la agencia:', error);
+    res.status(500).json({ error: 'No se pudo cargar la lista.' });
   }
 });
 
@@ -136,6 +233,42 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error al obtener excursionista:', error);
     res.status(500).json({ error: 'No se pudo obtener el excursionista.' });
+  }
+});
+
+// POST /api/excursionistas/:id/confirmar
+// El propio excursionista confirma su registro despues de buscar y
+// seleccionar su nombre en la lista de su agencia. Si el telefono
+// coincide con el que la agencia proporciono, se activa el registro
+// (deja de ser "pendiente") y arranca el monitoreo GPS en este dispositivo.
+router.post('/:id/confirmar', async (req, res) => {
+  try {
+    const { telefono, ubicacionRegistro } = req.body;
+    const ref = db.ref(`excursionistas/${req.params.id}`);
+    const snapshot = await ref.once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: 'No se encontró ese registro.' });
+    }
+    const excursionista = snapshot.val();
+
+    if (excursionista.estado !== 'pendiente') {
+      return res.status(400).json({ error: 'Este registro ya fue confirmado antes o no está disponible.' });
+    }
+
+    const soloDigitos = (t) => (t || '').replace(/\D/g, '');
+    if (soloDigitos(telefono).length < 8 || soloDigitos(telefono) !== soloDigitos(excursionista.telefono)) {
+      return res.status(400).json({ error: 'El teléfono no coincide con nuestros registros. Verifica e intenta de nuevo.' });
+    }
+    if (!ubicacionRegistro || ubicacionRegistro.lat == null || ubicacionRegistro.lng == null) {
+      return res.status(400).json({ error: 'Debes activar tu ubicación GPS para confirmar tu registro.' });
+    }
+
+    await ref.update({ estado: 'activo', ubicacionRegistro, fechaRegistro: Date.now() });
+    const actualizado = (await ref.once('value')).val();
+    res.json(actualizado);
+  } catch (error) {
+    console.error('Error al confirmar registro:', error);
+    res.status(500).json({ error: 'No se pudo confirmar el registro.' });
   }
 });
 

@@ -249,6 +249,18 @@ async function cargarAgencias() {
     const respuesta = await fetch('/api/agencias');
     const lista = await respuesta.json();
 
+    // Tambien alimenta el selector de "cargar lista de excursionistas".
+    const selectLista = document.getElementById('selectAgenciaLista');
+    const valorPrevio = selectLista.value;
+    selectLista.innerHTML = '<option value="">Selecciona una agencia…</option>';
+    lista.forEach((a) => {
+      const opcion = document.createElement('option');
+      opcion.value = a.id;
+      opcion.textContent = a.nombre;
+      selectLista.appendChild(opcion);
+    });
+    if (valorPrevio) selectLista.value = valorPrevio;
+
     cuerpo.innerHTML = '';
     if (lista.length === 0) {
       cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Aún no hay agencias registradas.</td></tr>';
@@ -301,6 +313,125 @@ async function eliminarAgencia(id) {
   if (!confirmar) return;
   await fetch(`/api/agencias/${id}`, { method: 'DELETE' });
   cargarAgencias();
+}
+
+// --- Cargar lista de excursionistas de una agencia (nombre + telefono) ---
+function horaSalidaListaA24h() {
+  const horaSel = document.getElementById('horaSalidaListaHora').value;
+  const minutoSel = document.getElementById('horaSalidaListaMinuto').value;
+  const periodoSel = document.getElementById('horaSalidaListaPeriodo').value;
+  if (!horaSel) return '';
+  let hora24 = parseInt(horaSel, 10) % 12;
+  if (periodoSel === 'PM') hora24 += 12;
+  return `${String(hora24).padStart(2, '0')}:${minutoSel}`;
+}
+
+function parsearListaAgencia(texto) {
+  return texto
+    .split('\n')
+    .map((linea) => linea.trim())
+    .filter((linea) => linea.length > 0)
+    .map((linea) => {
+      const idx = linea.indexOf(',');
+      if (idx === -1) return { nombre: linea.trim(), telefono: '' };
+      return {
+        nombre: linea.slice(0, idx).trim(),
+        telefono: linea.slice(idx + 1).trim(),
+      };
+    });
+}
+
+document.getElementById('selectAgenciaLista').addEventListener('change', cargarListaAgenciaTabla);
+document.getElementById('btnActualizarListaAgencia').addEventListener('click', cargarListaAgenciaTabla);
+document.getElementById('btnCargarListaAgencia').addEventListener('click', cargarListaAgencia);
+
+async function cargarListaAgenciaTabla() {
+  const agenciaId = document.getElementById('selectAgenciaLista').value;
+  const cuerpo = document.getElementById('tablaListaAgencia');
+  if (!agenciaId) {
+    cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Selecciona una agencia para ver su lista.</td></tr>';
+    return;
+  }
+  cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Cargando…</td></tr>';
+  try {
+    const respuesta = await fetch(`/api/excursionistas/agencia/${agenciaId}/completo`);
+    const lista = await respuesta.json();
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Esta agencia aún no tiene ninguna lista cargada.</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = lista.map((p) => `
+      <tr>
+        <td>${escaparHtml(p.nombre)}</td>
+        <td>${escaparHtml(p.telefono || '-')}</td>
+        <td>${p.estado === 'pendiente' ? '<span class="chip">⏳ Pendiente</span>' : '<span class="chip">✅ Confirmado</span>'}</td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarPersonaListaAgencia('${p.id}')">Eliminar</button></td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    console.error('Error al cargar la lista de la agencia:', error);
+    cuerpo.innerHTML = '<tr><td colspan="4" class="text-danger text-center">No se pudo cargar la lista.</td></tr>';
+  }
+}
+
+async function eliminarPersonaListaAgencia(id) {
+  const confirmar = confirm('¿Eliminar a esta persona de la lista de la agencia?');
+  if (!confirmar) return;
+  await fetch(`/api/excursionistas/${id}`, { method: 'DELETE' });
+  cargarListaAgenciaTabla();
+}
+
+async function cargarListaAgencia() {
+  const errorBox = document.getElementById('errorListaAgencia');
+  const exitoBox = document.getElementById('exitoListaAgencia');
+  errorBox.classList.add('d-none');
+  exitoBox.classList.add('d-none');
+
+  const agenciaId = document.getElementById('selectAgenciaLista').value;
+  const fechaSalidaEstimada = document.getElementById('fechaSalidaLista').value;
+  const horaSalidaEstimada = horaSalidaListaA24h();
+  const personas = parsearListaAgencia(document.getElementById('textareaListaAgencia').value);
+
+  if (!agenciaId) {
+    errorBox.textContent = 'Selecciona la agencia.';
+    errorBox.classList.remove('d-none');
+    return;
+  }
+  if (!fechaSalidaEstimada || !horaSalidaEstimada) {
+    errorBox.textContent = 'Indica el día y la hora de salida del grupo.';
+    errorBox.classList.remove('d-none');
+    return;
+  }
+  if (personas.length === 0) {
+    errorBox.textContent = 'Escribe al menos una persona (una por línea: Nombre completo, Teléfono).';
+    errorBox.classList.remove('d-none');
+    return;
+  }
+
+  const btn = document.getElementById('btnCargarListaAgencia');
+  btn.disabled = true;
+  btn.textContent = 'Cargando...';
+
+  try {
+    const respuesta = await fetch(`/api/excursionistas/agencia/${agenciaId}/lista`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ personas, fechaSalidaEstimada, horaSalidaEstimada }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo cargar la lista.');
+
+    exitoBox.textContent = `✅ Se cargaron ${resultado.creados} excursionista(s). Ya pueden buscar su nombre en el registro público.`;
+    exitoBox.classList.remove('d-none');
+    document.getElementById('textareaListaAgencia').value = '';
+    cargarListaAgenciaTabla();
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('d-none');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Cargar lista';
+  }
 }
 
 // --- Colaboradores (acceso limitado a Tiempo real) ---

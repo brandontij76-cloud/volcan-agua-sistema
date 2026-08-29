@@ -130,96 +130,43 @@
 
     <!-- ============ MODO AGENCIA ============ -->
     <div id="panelAgencia" class="d-none">
-      <form id="formGrupoAgencia" class="card p-4">
+      <div class="card p-4">
         <div class="mb-3">
           <label for="selectAgencia" class="form-label">Empresa de excursión *</label>
           <select class="form-select" id="selectAgencia" required>
             <option value="">Selecciona la agencia…</option>
           </select>
           <div class="form-text">
-            Si la agencia no aparece en la lista, debe ser registrada primero por la Municipalidad desde el panel administrativo.
-          </div>
-        </div>
-        <div class="mb-3">
-          <label for="cantidadGrupo" class="form-label">¿Cuántas personas van a subir? *</label>
-          <input type="number" class="form-control" id="cantidadGrupo" min="1" value="1" required>
-        </div>
-        <div class="mb-3">
-          <label for="fechaSalidaGrupo" class="form-label">¿Qué día suben? *</label>
-          <input type="date" class="form-control" id="fechaSalidaGrupo" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Hora estimada de salida *</label>
-          <div class="d-flex gap-2">
-            <select class="form-select" id="horaSalidaGrupoHora" required>
-              <option value="">Hora</option>
-              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
-              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
-            </select>
-            <select class="form-select" id="horaSalidaGrupoMinuto" required>
-              <option value="00">00</option>
-              <option value="15">15</option>
-              <option value="30">30</option>
-              <option value="45">45</option>
-            </select>
-            <select class="form-select" id="horaSalidaGrupoPeriodo" required>
-              <option value="AM">a. m.</option>
-              <option value="PM">p. m.</option>
-            </select>
+            Tu nombre debe haber sido cargado antes por la agencia ante la Municipalidad. Si no aparece, avísale a tu agencia.
           </div>
         </div>
 
-        <div id="mensajeErrorGrupo" class="alert alert-danger d-none"></div>
+        <div id="cajaSinAgenciaSeleccionada" class="alert alert-light small"></div>
 
-        <button type="submit" class="btn btn-volcan btn-lg mt-2" id="btnIniciarGrupo" disabled>
-          Iniciar registro del grupo
-        </button>
-      </form>
-
-      <div id="cajaListaGrupo" class="d-none">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <h5 class="mb-0">Excursionistas del grupo</h5>
-          <span class="chip" id="contadorGrupo">0 / 0 registrados</span>
-        </div>
-
-        <form id="formPersonaGrupo" class="card p-3 mb-3">
-          <input type="hidden" id="idEdicionGrupo" value="">
-          <div class="row g-2 align-items-end">
-            <div class="col-md-6">
-              <label class="form-label">Nombre completo *</label>
-              <input type="text" class="form-control" id="nombreGrupo" placeholder="Ej. Juan Pérez" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Teléfono *</label>
-              <input type="tel" class="form-control" id="telefonoGrupo" placeholder="Mínimo 8 dígitos" required>
-            </div>
-            <div class="col-md-2">
-              <button type="submit" class="btn btn-volcan w-100" id="btnAgregarGrupo">Agregar</button>
-            </div>
+        <!-- Paso 1: buscar y elegir el propio nombre en la lista precargada -->
+        <div id="cajaBuscarNombre" class="d-none">
+          <div class="mb-3">
+            <label for="buscarNombreAgencia" class="form-label">Busca tu nombre en la lista *</label>
+            <input type="text" class="form-control" id="buscarNombreAgencia" placeholder="Escribe para buscar…" autocomplete="off">
           </div>
-          <div id="mensajeErrorGrupoPersona" class="alert alert-danger d-none mt-2 mb-0"></div>
-        </form>
-
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Teléfono</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="tablaGrupo">
-              <tr><td colspan="3" class="text-muted text-center">Aún no hay excursionistas registrados en este grupo.</td></tr>
-            </tbody>
-          </table>
+          <div id="listaNombresAgencia" class="list-group mb-2" style="max-height: 260px; overflow-y: auto;"></div>
+          <div id="sinResultadosAgencia" class="text-muted small d-none">No se encontró ningún nombre. Verifica con tu agencia que ya te hayan agregado a la lista.</div>
         </div>
 
-        <div id="avisoGrupoCompleto" class="alert alert-success d-none">
-          ✅ Grupo completo. Ya registraste a todos los excursionistas indicados.
-          <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="location.reload()">Registrar otro grupo</button>
+        <!-- Paso 2: confirmar con el telefono -->
+        <div id="cajaConfirmarTelefono" class="d-none">
+          <div class="alert alert-light small d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>Seleccionaste: <strong id="nombreSeleccionadoAgencia"></strong></span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCambiarNombreAgencia">No soy yo</button>
+          </div>
+          <div class="mb-3">
+            <label for="telefonoConfirmarAgencia" class="form-label">Confirma tu número de teléfono *</label>
+            <input type="tel" class="form-control" id="telefonoConfirmarAgencia" placeholder="El mismo que tu agencia registró">
+          </div>
+          <div id="mensajeErrorAgenciaConfirmar" class="alert alert-danger d-none"></div>
+          <button type="button" class="btn btn-volcan btn-lg" id="btnConfirmarAgencia" disabled>
+            Confirmar e iniciar monitoreo
+          </button>
         </div>
       </div>
     </div>

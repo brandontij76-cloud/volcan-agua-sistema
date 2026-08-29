@@ -20,8 +20,21 @@ async function limpiarExcursionistasVencidos(db) {
   const datos = snapshot.val() || {};
   const ahora = Date.now();
 
+  // Un "pendiente" de una agencia (nombre precargado por la Municipalidad,
+  // que todavia nadie confirma) puede cargarse con dias de anticipacion a
+  // la subida. Su reloj de retencion corre desde la fecha de salida
+  // planeada, no desde que se cargo, para no perder la lista antes de que
+  // la persona tenga oportunidad de buscar su nombre y confirmar.
+  function fechaLimiteDe(ex) {
+    if (ex.estado === 'pendiente' && ex.fechaSalidaEstimada) {
+      const fechaSalida = new Date(`${ex.fechaSalidaEstimada}T00:00:00`).getTime();
+      if (!Number.isNaN(fechaSalida)) return fechaSalida;
+    }
+    return ex.fechaRegistro || 0;
+  }
+
   const idsAEliminar = Object.entries(datos)
-    .filter(([, ex]) => ahora - (ex.fechaRegistro || 0) > RETENCION_MAXIMA_MS)
+    .filter(([, ex]) => ahora - fechaLimiteDe(ex) > RETENCION_MAXIMA_MS)
     .map(([id]) => id);
 
   await Promise.all(idsAEliminar.map((id) => db.ref(`excursionistas/${id}`).remove()));
