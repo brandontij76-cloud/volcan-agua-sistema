@@ -1,105 +1,44 @@
 /* public/css/style.css
-   Identidad visual propia: tema nocturno inspirado en la silueta del volcan
-   contra el cielo, con acentos color ambar (como el amanecer que ven los
-   excursionistas desde la cima). Glassmorphism sutil, tipografia moderna. */
+   Identidad visual propia: panel de monitoreo tipo "centro de control",
+   fondo casi negro con acentos verde neon (inspirado en dashboards de
+   monitoreo de infraestructura), tarjetas oscuras con iconos en anillos
+   de brillo. Tema fijo (no cambia con la hora del dia). */
 
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
-  /* Tema por defecto: noche (se sobreescribe segun hora via data-theme) */
-  --bg-deep: #0b1220;
-  --bg-mid: #101b2e;
-  --bg-card: #16223a;
-  --bg-card-soft: rgba(255, 255, 255, 0.04);
-  --border-soft: rgba(255, 255, 255, 0.08);
-  --navbar-bg: rgba(11, 18, 32, 0.75);
-  --input-bg: rgba(255, 255, 255, 0.03);
-  --input-bg-focus: rgba(255, 255, 255, 0.05);
+  --bg-deep: #05080c;
+  --bg-mid: #0a0f16;
+  --bg-card: #10161f;
+  --bg-card-soft: rgba(255, 255, 255, 0.035);
+  --border-soft: rgba(255, 255, 255, 0.09);
+  --navbar-bg: rgba(5, 8, 12, 0.85);
+  --input-bg: rgba(255, 255, 255, 0.035);
+  --input-bg-focus: rgba(255, 255, 255, 0.06);
   --navbar-icon-filter: invert(1) grayscale(1);
   --hero-grad-from: #ffffff;
-  --hero-mountain-1: #101b2e;
-  --hero-mountain-2: #16223a;
+  --hero-mountain-1: #0a0f16;
+  --hero-mountain-2: #10161f;
 
-  --ambar: #f2a341;
-  --ambar-fuerte: #e8892a;
-  --teal: #2dd4bf;
-  --teal-fuerte: #14b8a6;
-  --lavanda: #8b8ff5;
+  --ambar: #22c55e;
+  --ambar-fuerte: #16a34a;
+  --teal: #34d399;
+  --teal-fuerte: #0ea472;
+  --lavanda: #38bdf8;
 
-  --texto-principal: #eef2f8;
-  --texto-suave: #9aa7bd;
-  --texto-tenue: #6b7690;
+  --texto-principal: #eef3f6;
+  --texto-suave: #96a3ae;
+  --texto-tenue: #62707c;
 
-  --alerta-grave: #f0554a;
-  --alerta-moderada: #f2a341;
-  --alerta-leve: #6bcf9a;
-  --exito: #34d399;
+  --alerta-grave: #ef4444;
+  --alerta-moderada: #f59e0b;
+  --alerta-leve: #34d399;
+  --exito: #22c55e;
 
-  --radio-card: 20px;
-  --radio-btn: 14px;
-  --sombra-suave: 0 8px 30px rgba(0, 0, 0, 0.35);
-  --sombra-fuerte: 0 20px 50px rgba(0, 0, 0, 0.5);
-  --sol-luna: #e4e9f5;
-}
-
-/* ---------- Tema DIA (mañana, ~6:00-12:59): claro y fresco ---------- */
-:root[data-theme="dia"] {
-  --bg-deep: #eef3f9;
-  --bg-mid: #e4ecf6;
-  --bg-card: #ffffff;
-  --bg-card-soft: rgba(15, 35, 65, 0.035);
-  --border-soft: rgba(15, 35, 65, 0.1);
-  --navbar-bg: rgba(255, 255, 255, 0.8);
-  --input-bg: rgba(15, 35, 65, 0.03);
-  --input-bg-focus: rgba(15, 35, 65, 0.05);
-  --navbar-icon-filter: none;
-  --hero-grad-from: #16223a;
-  --hero-mountain-1: #d7e3f3;
-  --hero-mountain-2: #c3d5ee;
-
-  --texto-principal: #16223a;
-  --texto-suave: #4e5c74;
-  --texto-tenue: #7c879a;
-
-  --teal: #0d9488;
-  --teal-fuerte: #0d9488;
-  --sombra-suave: 0 8px 30px rgba(15, 35, 65, 0.08);
-  --sombra-fuerte: 0 20px 50px rgba(15, 35, 65, 0.14);
-  --sol-luna: #ffd166;
-}
-
-/* ---------- Tema TARDE (~13:00-18:59): calido, atardecer ---------- */
-:root[data-theme="tarde"] {
-  --bg-deep: #241408;
-  --bg-mid: #33200d;
-  --bg-card: #3d2712;
-  --bg-card-soft: rgba(255, 220, 180, 0.05);
-  --border-soft: rgba(255, 200, 150, 0.12);
-  --navbar-bg: rgba(36, 20, 8, 0.75);
-  --input-bg: rgba(255, 220, 180, 0.04);
-  --input-bg-focus: rgba(255, 220, 180, 0.07);
-  --navbar-icon-filter: invert(1) grayscale(1);
-  --hero-grad-from: #fff3e6;
-  --hero-mountain-1: #33200d;
-  --hero-mountain-2: #3d2712;
-
-  --ambar: #ffb454;
-  --ambar-fuerte: #ff9a2e;
-  --teal: #f2825c;
-  --teal-fuerte: #e8703f;
-  --lavanda: #d98bd0;
-
-  --texto-principal: #fff3e6;
-  --texto-suave: #d9b79a;
-  --texto-tenue: #a9856a;
-  --sol-luna: #ff9a4d;
-}
-
-/* ---------- Tema NOCHE (~19:00-5:59): el original ---------- */
-:root[data-theme="noche"] {
-  --bg-deep: #0b1220;
-  --bg-mid: #101b2e;
-  --bg-card: #16223a;
+  --radio-card: 16px;
+  --radio-btn: 10px;
+  --sombra-suave: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --sombra-fuerte: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -108,14 +47,13 @@
 
 body {
   background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(45, 212, 191, 0.08), transparent),
-    radial-gradient(1000px 500px at 90% 10%, rgba(242, 163, 65, 0.07), transparent),
+    radial-gradient(1200px 600px at 15% -10%, rgba(34, 197, 94, 0.09), transparent),
+    radial-gradient(1000px 500px at 90% 10%, rgba(52, 211, 153, 0.06), transparent),
     linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
   background-attachment: fixed;
   font-family: 'Manrope', system-ui, -apple-system, sans-serif;
   color: var(--texto-principal);
   min-height: 100vh;
-  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -153,7 +91,7 @@ a:hover { color: var(--ambar); }
   height: 10px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--ambar), var(--teal));
-  box-shadow: 0 0 12px rgba(242, 163, 65, 0.6);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
 }
 
 .navbar-volcan .nav-link {
@@ -175,13 +113,13 @@ a:hover { color: var(--ambar); }
   font-weight: 700;
   border-radius: var(--radio-btn);
   padding: 0.75rem 1.5rem;
-  box-shadow: 0 8px 24px rgba(45, 212, 191, 0.25);
+  box-shadow: 0 8px 24px rgba(52, 211, 153, 0.25);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .btn-volcan:hover {
   color: #06231f;
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(45, 212, 191, 0.35);
+  box-shadow: 0 12px 28px rgba(52, 211, 153, 0.35);
 }
 .btn-volcan:active { transform: translateY(0); }
 
@@ -192,13 +130,13 @@ a:hover { color: var(--ambar); }
   font-weight: 700;
   border-radius: var(--radio-btn);
   padding: 0.75rem 1.5rem;
-  box-shadow: 0 8px 24px rgba(242, 163, 65, 0.25);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.25);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .btn-ambar:hover {
   color: #2a1602;
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(242, 163, 65, 0.35);
+  box-shadow: 0 12px 28px rgba(34, 197, 94, 0.35);
 }
 
 .btn-panico {
@@ -208,13 +146,13 @@ a:hover { color: var(--ambar); }
   font-weight: 800;
   letter-spacing: 0.5px;
   border-radius: var(--radio-btn);
-  box-shadow: 0 10px 30px rgba(240, 85, 74, 0.4);
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
   animation: latido 2.4s ease-in-out infinite;
 }
-.btn-panico:hover { color: #fff; box-shadow: 0 12px 34px rgba(240, 85, 74, 0.55); }
+.btn-panico:hover { color: #fff; box-shadow: 0 12px 34px rgba(239, 68, 68, 0.55); }
 @keyframes latido {
-  0%, 100% { box-shadow: 0 10px 30px rgba(240, 85, 74, 0.35); }
-  50% { box-shadow: 0 10px 40px rgba(240, 85, 74, 0.6); }
+  0%, 100% { box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 10px 40px rgba(239, 68, 68, 0.6); }
 }
 
 .btn-cima {
@@ -223,7 +161,7 @@ a:hover { color: var(--ambar); }
   color: #fff;
   font-weight: 700;
   border-radius: var(--radio-btn);
-  box-shadow: 0 8px 24px rgba(139, 143, 245, 0.3);
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.3);
 }
 .btn-cima:hover { color: #fff; transform: translateY(-2px); }
 
@@ -253,8 +191,7 @@ a:hover { color: var(--ambar); }
 
 .hero-volcan-foto {
   /* La foto siempre se ve oscura (tormenta nocturna), asi que dentro del
-     hero se fuerzan colores de texto claros sin importar el tema activo
-     del resto del sitio (dia/tarde/noche). */
+     hero se fuerzan colores de texto claros. */
   --texto-principal: #ffffff;
   --texto-suave: #cdd6e6;
   --hero-grad-from: #ffffff;
@@ -270,8 +207,8 @@ a:hover { color: var(--ambar); }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--teal);
-  background: rgba(45, 212, 191, 0.1);
-  border: 1px solid rgba(45, 212, 191, 0.25);
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
   padding: 0.35rem 0.9rem;
   border-radius: 999px;
   margin-bottom: 1.25rem;
@@ -311,18 +248,20 @@ a:hover { color: var(--ambar); }
   height: 100%;
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
-.card-feature:hover { transform: translateY(-4px); border-color: rgba(45, 212, 191, 0.3); }
+.card-feature:hover { transform: translateY(-4px); border-color: rgba(52, 211, 153, 0.3); }
 
 .card-feature .icono-feature {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 1rem;
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(242, 163, 65, 0.18));
-  color: var(--ambar-fuerte);
+  margin: 0 auto 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: var(--ambar);
+  box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.07), 0 0 0 16px rgba(34, 197, 94, 0.035);
 }
 
 .card-feature h5 { font-weight: 700; margin-bottom: 0.5rem; }
@@ -345,7 +284,7 @@ a:hover { color: var(--ambar); }
   background: var(--input-bg-focus);
   border-color: var(--teal);
   color: var(--texto-principal);
-  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
 }
 .form-control::placeholder { color: var(--texto-tenue); }
 
@@ -475,7 +414,7 @@ a:hover { color: var(--ambar); }
   border-radius: 50%;
   background: var(--ambar);
   border: 2.5px solid var(--bg-card);
-  box-shadow: var(--sombra-suave);
+  box-shadow: var(--sombra-suave), 0 0 0 6px rgba(34, 197, 94, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -484,8 +423,8 @@ a:hover { color: var(--ambar); }
   z-index: 2;
 }
 
-.avatar-mapa--colaborador .avatar-circulo { background: var(--teal-fuerte); }
-.avatar-mapa--propio .avatar-circulo { background: var(--lavanda); }
+.avatar-mapa--colaborador .avatar-circulo { background: var(--teal-fuerte); box-shadow: var(--sombra-suave), 0 0 0 6px rgba(14, 164, 114, 0.18); }
+.avatar-mapa--propio .avatar-circulo { background: var(--lavanda); box-shadow: var(--sombra-suave), 0 0 0 6px rgba(56, 189, 248, 0.2); }
 
 /* Cono de direccion: triangulo que se dibuja apuntando hacia arriba por
    defecto y se rota via JS segun el rumbo real. Solo visible mientras la
@@ -540,7 +479,7 @@ a:hover { color: var(--ambar); }
   border-bottom-color: var(--border-soft);
 }
 
-.alerta-fila-no-atendida { background-color: rgba(240, 85, 74, 0.08) !important; }
+.alerta-fila-no-atendida { background-color: rgba(239, 68, 68, 0.08) !important; }
 
 /* ---------- Alertas / avisos ---------- */
 .alert-light {
@@ -550,14 +489,14 @@ a:hover { color: var(--ambar); }
   border-radius: 14px;
 }
 .alert-danger {
-  background: rgba(240, 85, 74, 0.12);
-  border: 1px solid rgba(240, 85, 74, 0.3);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ffb4ae;
   border-radius: 14px;
 }
 .alert-warning {
-  background: rgba(242, 163, 65, 0.12);
-  border: 1px solid rgba(242, 163, 65, 0.3);
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
   color: var(--ambar);
   border-radius: 14px;
 }
@@ -578,6 +517,73 @@ a:hover { color: var(--ambar); }
 }
 .stat-card .stat-numero { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; font-weight: 700; }
 .stat-card .stat-label { color: var(--texto-tenue); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ---------- Panel de estadisticas: tarjeta de estado grande + fila de
+   metricas agrupadas, estilo dashboard de monitoreo ---------- */
+.tarjeta-estado-grande {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radio-card);
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.tarjeta-estado-grande .estado-punto {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card-soft);
+  border: 1.5px solid rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.08), 0 0 0 16px rgba(34, 197, 94, 0.04);
+  color: var(--ambar);
+}
+.tarjeta-estado-grande .estado-eyebrow {
+  color: var(--texto-tenue);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.tarjeta-estado-grande .estado-valor {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--texto-principal);
+}
+
+.fila-metricas-agrupadas {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radio-card);
+  padding: 1.4rem 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+}
+.fila-metricas-agrupadas .metrica-grupo {
+  flex: 1 1 140px;
+  text-align: center;
+  padding: 0.4rem 1rem;
+  border-right: 1px solid var(--border-soft);
+}
+.fila-metricas-agrupadas .metrica-grupo:last-child { border-right: none; }
+.fila-metricas-agrupadas .metrica-numero {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+.fila-metricas-agrupadas .metrica-label {
+  color: var(--texto-tenue);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}
+@media (max-width: 767px) {
+  .fila-metricas-agrupadas .metrica-grupo { flex: 1 1 45%; border-right: none; margin-bottom: 0.75rem; }
+}
 
 /* ---------- Footer con firma ---------- */
 .footer-volcan {
@@ -645,8 +651,8 @@ a:hover { color: var(--ambar); }
   margin-right: 0.35em;
   vertical-align: middle;
 }
-.punto-estado-activo { background: var(--exito); box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25); }
-.punto-estado-inactivo { background: var(--alerta-grave); box-shadow: 0 0 0 3px rgba(240, 85, 74, 0.25); }
+.punto-estado-activo { background: var(--exito); box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25); }
+.punto-estado-inactivo { background: var(--alerta-grave); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25); }
 
 /* ---------- Marcadores de puntos de referencia en el mapa ---------- */
 .marcador-punto-referencia-emoji {
@@ -658,8 +664,8 @@ a:hover { color: var(--ambar); }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ambar-fuerte);
-  box-shadow: var(--sombra-suave);
+  color: var(--ambar);
+  box-shadow: var(--sombra-suave), 0 0 0 5px rgba(34, 197, 94, 0.12);
 }
 .ficha-ruta-icono {
   text-align: center;
@@ -695,7 +701,7 @@ a:hover { color: var(--ambar); }
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--sombra-fuerte);
+  box-shadow: var(--sombra-fuerte), 0 0 0 6px rgba(52, 211, 153, 0.14);
   cursor: pointer;
   transition: transform 0.15s ease;
 }

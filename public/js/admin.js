@@ -123,7 +123,7 @@ function iniciarMapaTiempoReal() {
     .then((r) => r.json())
     .then((ruta) => {
       const puntos = ruta.map((p) => [p.lat, p.lng]);
-      L.polyline(puntos, { color: '#2dd4bf', weight: 4, dashArray: '6 6' }).addTo(mapaTiempoReal);
+      L.polyline(puntos, { color: '#22c55e', weight: 4, dashArray: '6 6' }).addTo(mapaTiempoReal);
     });
 
   agregarPuntosReferencia(mapaTiempoReal);
@@ -198,41 +198,54 @@ async function cargarEstadisticas() {
         `).join('')
       : '<tr><td colspan="4" class="text-muted text-center">Sin alertas atendidas esta semana.</td></tr>';
 
+    const hayAlertasSinAtender = r.alertasSinAtender > 0;
+
     contenedor.innerHTML = `
-      <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4 col-lg-2">
+      <div class="tarjeta-estado-grande mb-3">
+        <div class="estado-punto">${Iconos.svg('brujula', 22)}</div>
+        <div>
+          <div class="estado-eyebrow">Ahora mismo</div>
+          <div class="estado-valor">${r.activos} excursionista${r.activos === 1 ? '' : 's'} en ruta</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
           <div class="stat-card">
             <div class="stat-numero">${r.totalRegistrados}</div>
-            <div class="stat-label">Registrados</div>
+            <div class="stat-label">Registrados esta semana</div>
           </div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
+        <div class="col-md-4">
           <div class="stat-card">
             <div class="stat-numero" style="color:var(--lavanda)">${r.cimaAlcanzada}</div>
             <div class="stat-label">Llegaron a la cima</div>
           </div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="stat-numero">${r.finalizados}</div>
-          <div class="stat-label">Finalizaron</div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
+        <div class="col-md-4">
           <div class="stat-card">
-            <div class="stat-numero" style="color:var(--alerta-moderada)">${r.sinTerminarODesviados}</div>
-            <div class="stat-label">Sin terminar / en ruta</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="stat-card">
-            <div class="stat-numero" style="color:var(--alerta-grave)">${r.alertasSinAtender}</div>
+            <div class="stat-numero" style="color:${hayAlertasSinAtender ? 'var(--alerta-grave)' : 'var(--exito)'}">${r.alertasSinAtender}</div>
             <div class="stat-label">Alertas sin atender</div>
           </div>
         </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="stat-card">
-            <div class="stat-numero" style="color:var(--exito)">${r.alertasAtendidas}</div>
-            <div class="stat-label">Alertas atendidas</div>
-          </div>
+      </div>
+
+      <div class="fila-metricas-agrupadas mb-4">
+        <div class="metrica-grupo">
+          <div class="metrica-numero">${r.finalizados}</div>
+          <div class="metrica-label">Finalizaron</div>
+        </div>
+        <div class="metrica-grupo">
+          <div class="metrica-numero" style="color:var(--alerta-moderada)">${r.sinTerminarODesviados}</div>
+          <div class="metrica-label">Sin terminar / en ruta</div>
+        </div>
+        <div class="metrica-grupo">
+          <div class="metrica-numero" style="color:var(--exito)">${r.alertasAtendidas}</div>
+          <div class="metrica-label">Alertas atendidas</div>
+        </div>
+        <div class="metrica-grupo">
+          <div class="metrica-numero">${r.totalAlertas}</div>
+          <div class="metrica-label">Total de alertas</div>
         </div>
       </div>
 
@@ -599,7 +612,7 @@ function iniciarMapaAdmin() {
     .then((r) => r.json())
     .then((ruta) => {
       const puntos = ruta.map((p) => [p.lat, p.lng]);
-      L.polyline(puntos, { color: '#2dd4bf', weight: 4, dashArray: '6 6' }).addTo(mapaAdmin);
+      L.polyline(puntos, { color: '#22c55e', weight: 4, dashArray: '6 6' }).addTo(mapaAdmin);
     });
 
   // Marcadores con nombre de los puntos clave del recorrido (Capilla, Mirador, Cima, etc.)

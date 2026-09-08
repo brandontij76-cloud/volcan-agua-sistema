@@ -74,7 +74,7 @@ function iniciarMapaTiempoReal() {
     .then((r) => r.json())
     .then((ruta) => {
       const puntos = ruta.map((p) => [p.lat, p.lng]);
-      L.polyline(puntos, { color: '#2dd4bf', weight: 4, dashArray: '6 6' }).addTo(mapaTiempoReal);
+      L.polyline(puntos, { color: '#22c55e', weight: 4, dashArray: '6 6' }).addTo(mapaTiempoReal);
     });
 
   agregarPuntosReferencia(mapaTiempoReal);
