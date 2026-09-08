@@ -12,29 +12,29 @@ function iconosClima(clima) {
 
   // 1) Precipitacion
   if (clima.probabilidadLluvia >= 60) {
-    iconos.push({ icono: '⛈️', etiqueta: 'Lluvia probable' });
+    iconos.push({ icono: 'tormenta', etiqueta: 'Lluvia probable' });
   } else if (clima.probabilidadLluvia >= 30) {
-    iconos.push({ icono: '🌦️', etiqueta: 'Posible llovizna' });
+    iconos.push({ icono: 'lluvia', etiqueta: 'Posible llovizna' });
   } else {
-    iconos.push({ icono: '☀️', etiqueta: 'Sin lluvia' });
+    iconos.push({ icono: 'sol', etiqueta: 'Sin lluvia' });
   }
 
   // 2) Temperatura
   if (clima.temperaturaC <= 8) {
-    iconos.push({ icono: '❄️', etiqueta: 'Frío intenso' });
+    iconos.push({ icono: 'termometro', etiqueta: 'Frío intenso' });
   } else if (clima.temperaturaC <= 14) {
-    iconos.push({ icono: '🌡️', etiqueta: 'Fresco' });
+    iconos.push({ icono: 'nube', etiqueta: 'Fresco' });
   } else {
-    iconos.push({ icono: '🌤️', etiqueta: 'Templado' });
+    iconos.push({ icono: 'nubeSol', etiqueta: 'Templado' });
   }
 
   // 3) Cielo / viento
   if (clima.nubosidad >= 70) {
-    iconos.push({ icono: '☁️', etiqueta: 'Nublado / neblina' });
+    iconos.push({ icono: 'nube', etiqueta: 'Nublado / neblina' });
   } else if (clima.vientoKmh >= 30) {
-    iconos.push({ icono: '💨', etiqueta: 'Viento fuerte' });
+    iconos.push({ icono: 'viento', etiqueta: 'Viento fuerte' });
   } else {
-    iconos.push({ icono: '🌈', etiqueta: 'Cielo despejado' });
+    iconos.push({ icono: 'arcoiris', etiqueta: 'Cielo despejado' });
   }
 
   return iconos;
@@ -74,7 +74,7 @@ async function iniciarFichaRuta(idContenedor, opciones = {}) {
     contenedor.innerHTML = `
       <div class="card p-3 p-md-4 ficha-ruta">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-          <h5 class="mb-0">🏔️ ${infoRuta.nombre}</h5>
+          <h5 class="mb-0"><span class="icono" data-icono="montana"></span> ${infoRuta.nombre}</h5>
           <span class="chip">${fuenteTexto}</span>
         </div>
         <div class="row g-3 mb-3">
@@ -99,7 +99,7 @@ async function iniciarFichaRuta(idContenedor, opciones = {}) {
         <div class="ficha-ruta-clima">
           ${iconos.map((i) => `
             <div class="ficha-ruta-icono">
-              <div class="ficha-ruta-icono-emoji">${i.icono}</div>
+              <div class="ficha-ruta-icono-emoji">${Iconos.svg(i.icono, 26)}</div>
               <div class="ficha-ruta-icono-label">${i.etiqueta}</div>
             </div>
           `).join('')}
@@ -112,18 +112,18 @@ async function iniciarFichaRuta(idContenedor, opciones = {}) {
   }
 }
 
-// Elige un icono/emoji segun el nombre del punto de referencia, para que se
+// Elige un icono segun el nombre del punto de referencia, para que se
 // distingan de un vistazo en el mapa (capilla, mirador, tramos, cima, etc.).
 function iconoParaPuntoReferencia(nombre) {
   const texto = nombre.toUpperCase();
-  if (texto.includes('CIMA')) return '🏔️';
-  if (texto.includes('CAPILLA')) return '⛪';
-  if (texto.includes('VEHICULAR')) return '🚗';
-  if (texto.includes('MIRADOR')) return '📷';
-  if (texto.includes('ZIG ZAG')) return '🥾';
-  if (texto.includes('PRECAUCION') || texto.includes('PRECAUCIÓN') || texto.includes('MAL PASO')) return '⚠️';
-  if (texto === 'INICIO') return '🚩';
-  return '📍';
+  if (texto.includes('CIMA')) return 'montana';
+  if (texto.includes('CAPILLA')) return 'iglesia';
+  if (texto.includes('VEHICULAR')) return 'auto';
+  if (texto.includes('MIRADOR')) return 'camara';
+  if (texto.includes('ZIG ZAG')) return 'bota';
+  if (texto.includes('PRECAUCION') || texto.includes('PRECAUCIÓN') || texto.includes('MAL PASO')) return 'advertencia';
+  if (texto === 'INICIO') return 'bandera';
+  return 'pin';
 }
 
 /**
@@ -139,7 +139,7 @@ async function agregarPuntosReferencia(mapa) {
     puntos.forEach((punto) => {
       const icono = L.divIcon({
         className: 'marcador-punto-referencia',
-        html: `<div class="marcador-punto-referencia-emoji">${iconoParaPuntoReferencia(punto.nombre)}</div>`,
+        html: `<div class="marcador-punto-referencia-emoji">${Iconos.svg(iconoParaPuntoReferencia(punto.nombre), 16)}</div>`,
         iconSize: [30, 30],
         iconAnchor: [15, 15],
       });

@@ -15,12 +15,12 @@ function iniciarChatbot(contexto) {
   contenedor.id = 'chatbotFlotante';
   contenedor.innerHTML = `
     <button id="chatbotBoton" class="chatbot-boton" aria-label="Abrir asistente">
-      💬
+      ${Iconos.svg('chat', 24)}
     </button>
     <div id="chatbotPanel" class="chatbot-panel d-none">
       <div class="chatbot-header">
-        <span>🤖 Asistente Cumbre Segura</span>
-        <button id="chatbotCerrar" class="chatbot-cerrar" aria-label="Cerrar">✕</button>
+        <span>${Iconos.svg('robot', 16)} Asistente Cumbre Segura</span>
+        <button id="chatbotCerrar" class="chatbot-cerrar" aria-label="Cerrar">${Iconos.svg('cerrar', 14)}</button>
       </div>
       <div id="chatbotMensajes" class="chatbot-mensajes">
         <div class="chatbot-mensaje chatbot-mensaje-bot">

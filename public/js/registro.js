@@ -207,7 +207,7 @@ function construirHtmlAsistente(datos) {
 
   if (textoGemini) {
     return `
-      <div class="chip mb-2">✨ Generado con IA (Gemini)</div>
+      <div class="chip mb-2">${Iconos.svg('destello', 14)} Generado con IA (Gemini)</div>
       <div>${textoGemini}</div>
       <div class="mt-2 mb-1"><strong>Qué llevar:</strong></div>
       <ul class="mb-0 ps-3">${recomendaciones.map((r) => `<li>${r}</li>`).join('')}</ul>
@@ -220,14 +220,14 @@ function construirHtmlAsistente(datos) {
 
   let riesgoTexto = '';
   if (riesgo?.muestraSuficiente) {
-    riesgoTexto = `<div class="mt-2">🤖 Modelo de riesgo (entrenado con ${riesgo.totalMuestras} recorridos previos): <strong>${riesgo.probabilidadRiesgo}%</strong> de probabilidad de alguna alerta en este horario.</div>`;
+    riesgoTexto = `<div class="mt-2">${Iconos.svg('robot', 14)} Modelo de riesgo (entrenado con ${riesgo.totalMuestras} recorridos previos): <strong>${riesgo.probabilidadRiesgo}%</strong> de probabilidad de alguna alerta en este horario.</div>`;
   } else if (riesgo) {
-    riesgoTexto = `<div class="mt-2 text-muted small">🤖 El modelo de riesgo aún no tiene suficientes recorridos registrados (mínimo ${riesgo.muestrasMinimasRequeridas}) para predecir con confianza.</div>`;
+    riesgoTexto = `<div class="mt-2 text-muted small">${Iconos.svg('robot', 14)} El modelo de riesgo aún no tiene suficientes recorridos registrados (mínimo ${riesgo.muestrasMinimasRequeridas}) para predecir con confianza.</div>`;
   }
 
   let historicoTexto = '';
   if (estadisticaHistorica?.muestraSuficiente) {
-    historicoTexto = `<div class="mt-2">📊 De quienes han salido en este horario (${estadisticaHistorica.franja}), ${estadisticaHistorica.porcentajeConAlerta}% tuvo alguna alerta durante su recorrido.</div>`;
+    historicoTexto = `<div class="mt-2">${Iconos.svg('grafico', 14)} De quienes han salido en este horario (${estadisticaHistorica.franja}), ${estadisticaHistorica.porcentajeConAlerta}% tuvo alguna alerta durante su recorrido.</div>`;
   }
 
   const listaRecomendaciones = recomendaciones.map((r) => `<li>${r}</li>`).join('');
@@ -348,7 +348,7 @@ document.getElementById('btnConfirmarIndividual').addEventListener('click', asyn
     mensajeErrorRevision.textContent = error.message;
     mensajeErrorRevision.classList.remove('d-none');
     btn.disabled = false;
-    btn.textContent = '✅ Confirmar y enviar';
+    btn.innerHTML = `${Iconos.svg('check', 15)} Confirmar y enviar`;
   }
 });
 

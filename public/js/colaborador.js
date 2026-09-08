@@ -60,12 +60,15 @@ if (sesionGuardada) {
 }
 
 // --- Mapa de tiempo real (igual al del panel administrativo) ---
+let marcadoresTiempoReal = new Map(); // id excursionista -> { marker, posicion, rumbo }
+
 function iniciarMapaTiempoReal() {
   mapaTiempoReal = L.map('mapa-tiemporeal').setView([14.4650, -90.7350], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(mapaTiempoReal);
   capaMarcadoresTiempoReal = L.layerGroup().addTo(mapaTiempoReal);
+  marcadoresTiempoReal = new Map();
 
   fetch('/api/ruta-referencia')
     .then((r) => r.json())
@@ -81,6 +84,8 @@ async function cargarDatos() {
   await Promise.all([cargarTiempoReal(), cargarAlertas()]);
 }
 
+const UMBRAL_MOVIMIENTO_M = 4;
+
 async function cargarTiempoReal() {
   try {
     const respuesta = await fetch('/api/excursionistas?estado=activo');
@@ -88,27 +93,40 @@ async function cargarTiempoReal() {
 
     document.getElementById('contadorEnRuta').textContent = activos.length;
 
-    capaMarcadoresTiempoReal.clearLayers();
+    const idsActivos = new Set();
     activos
       .filter((e) => e.ubicacionActual)
       .forEach((e) => {
+        idsActivos.add(e.id);
         const km = e.ubicacionActual.kmRecorridos != null ? ` · ${e.ubicacionActual.kmRecorridos.toFixed(1)} km` : '';
-        const etiqueta = (e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre) + km;
-        const icono = L.divIcon({
-          className: '',
-          html: `
-            <div class="marcador-excursionista">
-              <div class="etiqueta-nombre">${escaparHtml(etiqueta)}</div>
-              <div class="icono-caminando">🚶</div>
-            </div>
-          `,
-          iconSize: [0, 0],
-          iconAnchor: [12, 12],
-        });
-        const marcador = L.marker([e.ubicacionActual.lat, e.ubicacionActual.lng], { icon: icono })
-          .bindPopup(`<strong>${escaparHtml(e.nombre)}</strong><br>Grupo de ${e.personasGrupo || 1}`);
-        capaMarcadoresTiempoReal.addLayer(marcador);
+        const etiqueta = escaparHtml((e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre) + km);
+        const nuevaPosicion = { lat: e.ubicacionActual.lat, lng: e.ubicacionActual.lng };
+
+        const existente = marcadoresTiempoReal.get(e.id);
+        if (existente) {
+          const distancia = Iconos.distanciaMetros(existente.posicion, nuevaPosicion);
+          const seMovio = distancia >= UMBRAL_MOVIMIENTO_M;
+          const rumbo = seMovio ? Iconos.calcularRumbo(existente.posicion, nuevaPosicion) : existente.rumbo || 0;
+
+          existente.marker.setIcon(Iconos.crearAvatarMapa(L, { etiqueta, rumbo, enMovimiento: seMovio, variante: 'colaborador' }));
+          Iconos.animarMarcador(existente.marker, [nuevaPosicion.lat, nuevaPosicion.lng]);
+          existente.posicion = nuevaPosicion;
+          existente.rumbo = rumbo;
+        } else {
+          const marcador = L.marker([nuevaPosicion.lat, nuevaPosicion.lng], {
+            icon: Iconos.crearAvatarMapa(L, { etiqueta, rumbo: 0, enMovimiento: false, variante: 'colaborador' }),
+          }).bindPopup(`<strong>${escaparHtml(e.nombre)}</strong><br>Grupo de ${e.personasGrupo || 1}`);
+          capaMarcadoresTiempoReal.addLayer(marcador);
+          marcadoresTiempoReal.set(e.id, { marker: marcador, posicion: nuevaPosicion, rumbo: 0 });
+        }
       });
+
+    marcadoresTiempoReal.forEach((valor, id) => {
+      if (!idsActivos.has(id)) {
+        capaMarcadoresTiempoReal.removeLayer(valor.marker);
+        marcadoresTiempoReal.delete(id);
+      }
+    });
   } catch (error) {
     console.error('Error al cargar el mapa de tiempo real:', error);
   }

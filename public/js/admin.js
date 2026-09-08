@@ -108,13 +108,16 @@ function iniciarPestanas() {
   }, INTERVALO_ACTUALIZACION_MS);
 }
 
-// --- Tiempo real: mapa tipo "Google Maps" con icono de persona caminando ---
+// --- Tiempo real: mapa tipo "Google Maps" con avatar y cono de direccion ---
+let marcadoresTiempoReal = new Map(); // id excursionista -> { marker, posicion }
+
 function iniciarMapaTiempoReal() {
   mapaTiempoReal = L.map('mapa-tiemporeal').setView([14.4650, -90.7350], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(mapaTiempoReal);
   capaMarcadoresTiempoReal = L.layerGroup().addTo(mapaTiempoReal);
+  marcadoresTiempoReal = new Map();
 
   fetch('/api/ruta-referencia')
     .then((r) => r.json())
@@ -126,6 +129,8 @@ function iniciarMapaTiempoReal() {
   agregarPuntosReferencia(mapaTiempoReal);
 }
 
+const UMBRAL_MOVIMIENTO_M = 4;
+
 async function cargarTiempoReal() {
   if (!mapaTiempoReal) return;
   try {
@@ -134,27 +139,41 @@ async function cargarTiempoReal() {
 
     document.getElementById('contadorEnRuta').textContent = activos.length;
 
-    capaMarcadoresTiempoReal.clearLayers();
+    const idsActivos = new Set();
     activos
       .filter((e) => e.ubicacionActual)
       .forEach((e) => {
+        idsActivos.add(e.id);
         const km = e.ubicacionActual.kmRecorridos != null ? ` · ${e.ubicacionActual.kmRecorridos.toFixed(1)} km` : '';
-        const etiqueta = (e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre) + km;
-        const icono = L.divIcon({
-          className: '',
-          html: `
-            <div class="marcador-excursionista">
-              <div class="etiqueta-nombre">${escaparHtml(etiqueta)}</div>
-              <div class="icono-caminando">🚶</div>
-            </div>
-          `,
-          iconSize: [0, 0],
-          iconAnchor: [12, 12],
-        });
-        const marcador = L.marker([e.ubicacionActual.lat, e.ubicacionActual.lng], { icon: icono })
-          .bindPopup(`<strong>${escaparHtml(e.nombre)}</strong><br>Grupo de ${e.personasGrupo || 1}`);
-        capaMarcadoresTiempoReal.addLayer(marcador);
+        const etiqueta = escaparHtml((e.personasGrupo > 1 ? `${e.nombre} (+${e.personasGrupo - 1})` : e.nombre) + km);
+        const nuevaPosicion = { lat: e.ubicacionActual.lat, lng: e.ubicacionActual.lng };
+
+        const existente = marcadoresTiempoReal.get(e.id);
+        if (existente) {
+          const distancia = Iconos.distanciaMetros(existente.posicion, nuevaPosicion);
+          const seMovio = distancia >= UMBRAL_MOVIMIENTO_M;
+          const rumbo = seMovio ? Iconos.calcularRumbo(existente.posicion, nuevaPosicion) : existente.rumbo || 0;
+
+          existente.marker.setIcon(Iconos.crearAvatarMapa(L, { etiqueta, rumbo, enMovimiento: seMovio, variante: 'excursionista' }));
+          Iconos.animarMarcador(existente.marker, [nuevaPosicion.lat, nuevaPosicion.lng]);
+          existente.posicion = nuevaPosicion;
+          existente.rumbo = rumbo;
+        } else {
+          const marcador = L.marker([nuevaPosicion.lat, nuevaPosicion.lng], {
+            icon: Iconos.crearAvatarMapa(L, { etiqueta, rumbo: 0, enMovimiento: false, variante: 'excursionista' }),
+          }).bindPopup(`<strong>${escaparHtml(e.nombre)}</strong><br>Grupo de ${e.personasGrupo || 1}`);
+          capaMarcadoresTiempoReal.addLayer(marcador);
+          marcadoresTiempoReal.set(e.id, { marker: marcador, posicion: nuevaPosicion, rumbo: 0 });
+        }
       });
+
+    // Quita del mapa a quienes ya no estan activos (finalizaron, etc.)
+    marcadoresTiempoReal.forEach((valor, id) => {
+      if (!idsActivos.has(id)) {
+        capaMarcadoresTiempoReal.removeLayer(valor.marker);
+        marcadoresTiempoReal.delete(id);
+      }
+    });
   } catch (error) {
     console.error('Error al cargar el mapa de tiempo real:', error);
   }
@@ -364,7 +383,7 @@ async function cargarListaAgenciaTabla() {
       <tr>
         <td>${escaparHtml(p.nombre)}</td>
         <td>${escaparHtml(p.telefono || '-')}</td>
-        <td>${p.estado === 'pendiente' ? '<span class="chip">⏳ Pendiente</span>' : '<span class="chip">✅ Confirmado</span>'}</td>
+        <td>${p.estado === 'pendiente' ? `<span class="chip">${Iconos.svg('reloj', 14)} Pendiente</span>` : `<span class="chip">${Iconos.svg('check', 14)} Confirmado</span>`}</td>
         <td><button class="btn btn-sm btn-outline-danger" onclick="eliminarPersonaListaAgencia('${p.id}')">Eliminar</button></td>
       </tr>
     `).join('');
@@ -421,7 +440,7 @@ async function cargarListaAgencia() {
     const resultado = await respuesta.json();
     if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo cargar la lista.');
 
-    exitoBox.textContent = `✅ Se cargaron ${resultado.creados} excursionista(s). Ya pueden buscar su nombre en el registro público.`;
+    exitoBox.innerHTML = `${Iconos.svg('check', 15)} Se cargaron ${resultado.creados} excursionista(s). Ya pueden buscar su nombre en el registro público.`;
     exitoBox.classList.remove('d-none');
     document.getElementById('textareaListaAgencia').value = '';
     cargarListaAgenciaTabla();
@@ -529,7 +548,7 @@ async function cargarEstadoModelo() {
     if (!estado.muestraSuficiente) {
       contenedor.innerHTML = `
         <div class="card p-3">
-          <div class="chip mb-2">🤖 Modelo de Machine Learning</div>
+          <div class="chip mb-2">${Iconos.svg('robot', 14)} Modelo de Machine Learning</div>
           <div class="text-muted small">
             Aún no hay suficientes recorridos registrados para entrenar el modelo
             (tiene ${estado.totalMuestras}, necesita mínimo ${estado.muestrasMinimasRequeridas}).
@@ -543,7 +562,7 @@ async function cargarEstadoModelo() {
     const m = estado.metricas;
     contenedor.innerHTML = `
       <div class="card p-3">
-        <div class="chip mb-2">🤖 Modelo de Machine Learning (regresión logística)</div>
+        <div class="chip mb-2">${Iconos.svg('robot', 14)} Modelo de Machine Learning (regresión logística)</div>
         <div class="row g-3">
           <div class="col-6 col-md-3">
             <div class="ficha-ruta-metrica-label">Entrenado con</div>
@@ -617,14 +636,14 @@ async function cargarExcursionistas() {
         : '-';
 
       const cimaHtml = e.cumbreAlcanzada
-        ? '<span class="chip">🏔️ Sí</span>'
+        ? `<span class="chip">${Iconos.svg('montana', 14)} Sí</span>`
         : '<span class="text-muted">—</span>';
 
       let retornoHtml = '<span class="text-muted">—</span>';
       if (e.estado === 'finalizado') {
         retornoHtml = e.retornoConfirmado
-          ? '<span class="chip">✅ Confirmado</span>'
-          : '<span class="chip">⚠️ Sin confirmar</span>';
+          ? `<span class="chip">${Iconos.svg('check', 14)} Confirmado</span>`
+          : `<span class="chip">${Iconos.svg('advertencia', 14)} Sin confirmar</span>`;
       }
 
       const fila = document.createElement('tr');

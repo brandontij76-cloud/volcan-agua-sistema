@@ -32,15 +32,15 @@
           <p class="mb-1">GPS: <span id="estadoGps" class="fw-bold">Esperando permiso…</span></p>
           <p class="mb-1">Último envío: <span id="ultimoEnvio">--</span></p>
           <p class="mb-0">Precisión: <span id="precisionGps">--</span></p>
-          <div id="chipCima" class="chip mt-2 d-none">🏔️ Cima confirmada</div>
+          <div id="chipCima" class="chip mt-2 d-none"><span class="icono" data-icono="montana"></span> Cima confirmada</div>
         </div>
         <div class="col-md-8">
           <div class="d-flex flex-wrap gap-2">
             <button id="btnCima" class="btn btn-cima flex-fill">
-              🏔️ Llegué a la cima
+              <span class="icono" data-icono="montana"></span> Llegué a la cima
             </button>
             <button id="btnPanico" class="btn btn-panico flex-fill">
-              🆘 Botón de emergencia
+              <span class="icono" data-icono="alerta"></span> Botón de emergencia
             </button>
             <button id="btnFinalizar" class="btn btn-outline-secondary flex-fill">
               Finalizar recorrido (regresé al pueblo)
@@ -61,6 +61,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/iconos.js"></script>
   <script src="js/fichaRuta.js"></script>
   <script src="js/monitor.js"></script>
   <script>iniciarFichaRuta('fichaRutaMonitor', { mostrarDificultad: false });</script>

@@ -18,6 +18,9 @@ const INTERVALO_ENVIO_MS = 30000; // 30 segundos
 
 let mapa, marcadorActual, ultimaPosicion = null;
 let kmRecorridosActual = null;
+let posicionAnteriorAvatar = null; // para calcular rumbo y si esta en movimiento
+let rumboActual = 0;
+let temporizadorQuietud = null;
 
 function escaparHtml(texto) {
   const div = document.createElement('div');
@@ -25,22 +28,17 @@ function escaparHtml(texto) {
   return div.innerHTML;
 }
 
-// Icono tipo "Google Maps" (persona caminando 🚶) con el nombre y los
-// kilometros recorridos como etiqueta encima, igual que en el panel
-// administrativo, para que el propio excursionista vea su avance.
-function iconoPropio() {
+// Icono tipo "Google Maps": circulo con el nombre y los kilometros
+// recorridos como etiqueta encima, y un cono de direccion que aparece
+// solo mientras la persona se esta moviendo, apuntando hacia su rumbo real.
+function iconoPropio(enMovimiento) {
   const km = kmRecorridosActual != null ? ` · ${kmRecorridosActual.toFixed(1)} km` : '';
-  const etiqueta = `${nombreExcursionista}${km}`;
+  const etiqueta = escaparHtml(`${nombreExcursionista}${km}`);
   return L.divIcon({
     className: '',
-    html: `
-      <div class="marcador-excursionista">
-        <div class="etiqueta-nombre">${escaparHtml(etiqueta)}</div>
-        <div class="icono-caminando">🚶</div>
-      </div>
-    `,
+    html: Iconos.htmlAvatarMapa({ etiqueta, rumbo: rumboActual, enMovimiento, variante: 'propio' }),
     iconSize: [0, 0],
-    iconAnchor: [12, 12],
+    iconAnchor: [17, 17],
   });
 }
 
@@ -51,7 +49,8 @@ function iniciarMapa(latInicial, lngInicial) {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(mapa);
 
-  marcadorActual = L.marker([latInicial, lngInicial], { icon: iconoPropio() }).addTo(mapa);
+  marcadorActual = L.marker([latInicial, lngInicial], { icon: iconoPropio(false) }).addTo(mapa);
+  posicionAnteriorAvatar = { lat: latInicial, lng: lngInicial };
 
   // Dibuja la ruta de referencia hacia el Volcan de Agua.
   fetch('/api/ruta-referencia')
@@ -66,13 +65,38 @@ function iniciarMapa(latInicial, lngInicial) {
   agregarPuntosReferencia(mapa);
 }
 
+// Distancia minima (metros) para considerar que hubo un desplazamiento
+// real y no solo ruido del GPS al estar quieto.
+const UMBRAL_MOVIMIENTO_M = 4;
+const PAUSA_TRAS_MOVERSE_MS = 4000;
+
 function actualizarMarcador(lat, lng) {
+  const nuevaPosicion = { lat, lng };
+
   if (!mapa) {
     iniciarMapa(lat, lng);
-  } else {
-    marcadorActual.setLatLng([lat, lng]);
-    marcadorActual.setIcon(iconoPropio());
-    mapa.panTo([lat, lng]);
+    return;
+  }
+
+  const distancia = Iconos.distanciaMetros(posicionAnteriorAvatar, nuevaPosicion);
+  const seMovio = distancia >= UMBRAL_MOVIMIENTO_M;
+
+  if (seMovio) {
+    rumboActual = Iconos.calcularRumbo(posicionAnteriorAvatar, nuevaPosicion);
+    posicionAnteriorAvatar = nuevaPosicion;
+  }
+
+  marcadorActual.setIcon(iconoPropio(seMovio));
+  Iconos.animarMarcador(marcadorActual, [lat, lng]);
+  mapa.panTo([lat, lng]);
+
+  // Tras un rato sin nuevos movimientos, se oculta el cono de direccion
+  // (la persona esta detenida, no tiene sentido seguir apuntando).
+  clearTimeout(temporizadorQuietud);
+  if (seMovio) {
+    temporizadorQuietud = setTimeout(() => {
+      if (marcadorActual) marcadorActual.setIcon(iconoPropio(false));
+    }, PAUSA_TRAS_MOVERSE_MS);
   }
 }
 
@@ -82,7 +106,7 @@ function actualizarMarcador(lat, lng) {
 function actualizarProgreso(km) {
   if (km == null) return;
   kmRecorridosActual = km;
-  if (marcadorActual) marcadorActual.setIcon(iconoPropio());
+  if (marcadorActual) marcadorActual.setIcon(iconoPropio(false));
   const elFicha = document.getElementById('fichaProgresoKm');
   if (elFicha) elFicha.textContent = `${km.toFixed(1)} km`;
 }
@@ -119,7 +143,7 @@ function manejarPosicion(posicion) {
   ultimaPosicion = { lat: latitude, lng: longitude };
 
   document.getElementById('estadoGps').textContent = 'Activo';
-  document.getElementById('badgeEstado').textContent = '🟢 Monitoreo activo';
+  document.getElementById('badgeEstado').innerHTML = '<span class="punto-estado punto-estado-activo"></span> Monitoreo activo';
   document.getElementById('precisionGps').textContent = `${Math.round(accuracy)} m`;
 
   actualizarMarcador(latitude, longitude);
@@ -127,7 +151,7 @@ function manejarPosicion(posicion) {
 
 function manejarErrorGps(error) {
   document.getElementById('estadoGps').textContent = 'Sin acceso al GPS';
-  document.getElementById('badgeEstado').textContent = '🔴 GPS no disponible';
+  document.getElementById('badgeEstado').innerHTML = '<span class="punto-estado punto-estado-inactivo"></span> GPS no disponible';
   console.error('Error de geolocalizacion:', error);
 }
 
@@ -178,7 +202,7 @@ document.getElementById('btnPanico').addEventListener('click', async () => {
 
 // --- Llegue a la cima ---
 document.getElementById('btnCima').addEventListener('click', async () => {
-  const confirmar = confirm('¿Confirmas que llegaste a la cima del Volcán de Agua? 🏔️');
+  const confirmar = confirm('¿Confirmas que llegaste a la cima del Volcán de Agua?');
   if (!confirmar) return;
 
   try {
@@ -191,12 +215,12 @@ document.getElementById('btnCima').addEventListener('click', async () => {
 
     document.getElementById('chipCima').classList.remove('d-none');
     document.getElementById('btnCima').disabled = true;
-    document.getElementById('btnCima').textContent = '🏔️ Cima confirmada';
+    document.getElementById('btnCima').innerHTML = `${Iconos.svg('montana', 16)} Cima confirmada`;
 
     if (resultado.cumbreUbicacionConfirmada === false) {
       alert('¡Felicidades! Se registró tu llegada a la cima. (Tu GPS marca una ubicación algo alejada del punto exacto, pero tu confirmación quedó guardada de todas formas.)');
     } else {
-      alert('¡Felicidades por llegar a la cima del Volcán de Agua! 🎉');
+      alert('¡Felicidades por llegar a la cima del Volcán de Agua!');
     }
   } catch (error) {
     alert('No se pudo registrar tu llegada a la cima. Intenta de nuevo.');
