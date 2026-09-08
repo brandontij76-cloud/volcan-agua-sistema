@@ -8,8 +8,32 @@ let mapaTiempoReal, capaMarcadoresTiempoReal;
 let pestanasIniciadas = { tiemporeal: false, estadisticas: false, agencias: false, colaboradores: false };
 
 // --- Login ---
+// El servidor entrega un token firmado al iniciar sesion correctamente, y
+// hay que reenviarlo (header Authorization) en cada peticion protegida --
+// antes, el servidor no verificaba nada y cualquiera podia llamar la API
+// directamente sin haber iniciado sesion.
 function sesionActiva() {
-  return sessionStorage.getItem('admin_autenticado') === 'true';
+  return Boolean(sessionStorage.getItem('admin_token'));
+}
+
+function tokenAdmin() {
+  return sessionStorage.getItem('admin_token');
+}
+
+// Envoltorio de fetch que agrega automaticamente el token a cada peticion.
+// Si el servidor responde 401 (token invalido o expirado), cierra la
+// sesion y regresa a la pantalla de login en vez de dejar la pantalla en
+// un estado a medias.
+async function fetchAdmin(url, opciones = {}) {
+  const encabezados = { ...(opciones.headers || {}), Authorization: `Bearer ${tokenAdmin()}` };
+  const respuesta = await fetch(url, { ...opciones, headers: encabezados });
+  if (respuesta.status === 401) {
+    sessionStorage.removeItem('admin_token');
+    alert('Tu sesion expiro. Vuelve a iniciar sesion.');
+    window.location.reload();
+    throw new Error('Sesion expirada.');
+  }
+  return respuesta;
 }
 
 function mostrarPanel() {
@@ -34,7 +58,7 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
     if (!respuesta.ok || !resultado.ok) {
       throw new Error(resultado.error || 'Contrasena incorrecta.');
     }
-    sessionStorage.setItem('admin_autenticado', 'true');
+    sessionStorage.setItem('admin_token', resultado.token);
     mostrarPanel();
   } catch (error) {
     errorBox.textContent = error.message;
@@ -43,13 +67,45 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
 });
 
 document.getElementById('btnCerrarSesion').addEventListener('click', () => {
-  sessionStorage.removeItem('admin_autenticado');
+  sessionStorage.removeItem('admin_token');
   window.location.reload();
 });
 
 if (sesionActiva()) {
   mostrarPanel();
 }
+
+// Descarga un archivo desde una ruta protegida (necesita el token en el
+// header, algo que un <a href="..."> normal no puede hacer): pide el
+// archivo con fetchAdmin, arma un enlace temporal con el resultado y lo
+// "clickea" solo, conservando el nombre de archivo que manda el servidor.
+async function descargarArchivoProtegido(url) {
+  const respuesta = await fetchAdmin(url);
+  if (!respuesta.ok) {
+    alert('No se pudo descargar el archivo.');
+    return;
+  }
+  const disposicion = respuesta.headers.get('Content-Disposition') || '';
+  const coincidencia = disposicion.match(/filename="([^"]+)"/);
+  const nombreArchivo = coincidencia ? coincidencia[1] : 'descarga.xlsx';
+
+  const blob = await respuesta.blob();
+  const urlTemporal = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = urlTemporal;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(urlTemporal);
+}
+
+document.getElementById('btnExportarExcel').addEventListener('click', () => {
+  descargarArchivoProtegido('/api/admin/exportar');
+});
+document.getElementById('btnDescargarReporteExcel').addEventListener('click', () => {
+  descargarArchivoProtegido('/api/admin/reporte-semanal/excel');
+});
 
 // --- Panel principal ---
 function iniciarPanel() {
@@ -135,7 +191,7 @@ const UMBRAL_MOVIMIENTO_M = 4;
 async function cargarTiempoReal() {
   if (!mapaTiempoReal) return;
   try {
-    const respuesta = await fetch('/api/excursionistas?estado=activo');
+    const respuesta = await fetchAdmin('/api/excursionistas?estado=activo');
     const activos = await respuesta.json();
 
     document.getElementById('contadorEnRuta').textContent = activos.length;
@@ -185,7 +241,7 @@ async function cargarEstadisticas() {
   const contenedor = document.getElementById('contenedorEstadisticas');
   contenedor.innerHTML = '<p class="text-muted">Cargando estadísticas…</p>';
   try {
-    const respuesta = await fetch('/api/admin/estadisticas');
+    const respuesta = await fetchAdmin('/api/admin/estadisticas');
     const r = await respuesta.json();
 
     const filasAtencion = (r.detalleAtencion || []).length
@@ -285,7 +341,7 @@ async function generarReporteSemanal() {
   contenedor.innerHTML = '<p class="text-muted">Analizando los datos de la semana y redactando el reporte…</p>';
 
   try {
-    const respuesta = await fetch('/api/admin/reporte-semanal');
+    const respuesta = await fetchAdmin('/api/admin/reporte-semanal');
     const r = await respuesta.json();
     if (!respuesta.ok) throw new Error(r.error || 'No se pudo generar el reporte.');
 
@@ -359,7 +415,7 @@ async function crearAgencia() {
   errorBox.classList.add('d-none');
 
   try {
-    const respuesta = await fetch('/api/agencias', {
+    const respuesta = await fetchAdmin('/api/agencias', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre, representante, telefono }),
@@ -380,7 +436,7 @@ async function crearAgencia() {
 async function eliminarAgencia(id) {
   const confirmar = confirm('¿Eliminar esta agencia? Los excursionistas ya asociados no se eliminan.');
   if (!confirmar) return;
-  await fetch(`/api/agencias/${id}`, { method: 'DELETE' });
+  await fetchAdmin(`/api/agencias/${id}`, { method: 'DELETE' });
   cargarAgencias();
 }
 
@@ -423,7 +479,7 @@ async function cargarListaAgenciaTabla() {
   }
   cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Cargando…</td></tr>';
   try {
-    const respuesta = await fetch(`/api/excursionistas/agencia/${agenciaId}/completo`);
+    const respuesta = await fetchAdmin(`/api/excursionistas/agencia/${agenciaId}/completo`);
     const lista = await respuesta.json();
     if (lista.length === 0) {
       cuerpo.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Esta agencia aún no tiene ninguna lista cargada.</td></tr>';
@@ -446,7 +502,7 @@ async function cargarListaAgenciaTabla() {
 async function eliminarPersonaListaAgencia(id) {
   const confirmar = confirm('¿Eliminar a esta persona de la lista de la agencia?');
   if (!confirmar) return;
-  await fetch(`/api/excursionistas/${id}`, { method: 'DELETE' });
+  await fetchAdmin(`/api/excursionistas/${id}`, { method: 'DELETE' });
   cargarListaAgenciaTabla();
 }
 
@@ -482,7 +538,7 @@ async function cargarListaAgencia() {
   btn.textContent = 'Cargando...';
 
   try {
-    const respuesta = await fetch(`/api/excursionistas/agencia/${agenciaId}/lista`, {
+    const respuesta = await fetchAdmin(`/api/excursionistas/agencia/${agenciaId}/lista`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ personas, fechaSalidaEstimada, horaSalidaEstimada }),
@@ -507,7 +563,7 @@ async function cargarListaAgencia() {
 async function cargarColaboradores() {
   const cuerpo = document.getElementById('tablaColaboradores');
   try {
-    const respuesta = await fetch('/api/colaboradores');
+    const respuesta = await fetchAdmin('/api/colaboradores');
     const lista = await respuesta.json();
 
     cuerpo.innerHTML = '';
@@ -553,7 +609,7 @@ async function crearColaborador() {
   errorBox.classList.add('d-none');
 
   try {
-    const respuesta = await fetch('/api/colaboradores', {
+    const respuesta = await fetchAdmin('/api/colaboradores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre, usuario, password }),
@@ -572,7 +628,7 @@ async function crearColaborador() {
 }
 
 async function cambiarEstadoColaborador(id, activo) {
-  await fetch(`/api/colaboradores/${id}/estado`, {
+  await fetchAdmin(`/api/colaboradores/${id}/estado`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ activo }),
@@ -583,7 +639,7 @@ async function cambiarEstadoColaborador(id, activo) {
 async function eliminarColaborador(id) {
   const confirmar = confirm('¿Eliminar esta cuenta de colaborador? Ya no podrá iniciar sesión.');
   if (!confirmar) return;
-  await fetch(`/api/colaboradores/${id}`, { method: 'DELETE' });
+  await fetchAdmin(`/api/colaboradores/${id}`, { method: 'DELETE' });
   cargarColaboradores();
 }
 
@@ -662,7 +718,7 @@ async function cargarDatos() {
 
 async function cargarExcursionistas() {
   try {
-    const respuesta = await fetch('/api/excursionistas');
+    const respuesta = await fetchAdmin('/api/excursionistas');
     const lista = await respuesta.json();
 
     const activos = lista.filter((e) => e.estado === 'activo');
@@ -733,7 +789,7 @@ async function cargarExcursionistas() {
 
 async function cargarAlertas() {
   try {
-    const respuesta = await fetch('/api/alertas');
+    const respuesta = await fetchAdmin('/api/alertas');
     const lista = await respuesta.json();
 
     const sinAtender = lista.filter((a) => !a.atendida);
@@ -776,7 +832,7 @@ async function cargarAlertas() {
 async function atenderAlerta(id) {
   const atendidaPor = prompt('¿Quién está atendiendo esta alerta? Escribe tu nombre:');
   if (!atendidaPor || !atendidaPor.trim()) return;
-  await fetch(`/api/alertas/${id}/atender`, {
+  await fetchAdmin(`/api/alertas/${id}/atender`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ atendidaPor: atendidaPor.trim() }),
@@ -787,7 +843,7 @@ async function atenderAlerta(id) {
 async function finalizarExcursionista(id) {
   const confirmar = confirm('¿Marcar este recorrido como finalizado?');
   if (!confirmar) return;
-  await fetch(`/api/excursionistas/${id}/finalizar`, { method: 'PATCH' });
+  await fetchAdmin(`/api/excursionistas/${id}/finalizar`, { method: 'PATCH' });
   cargarExcursionistas();
 }
 

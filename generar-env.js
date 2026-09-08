@@ -8,10 +8,11 @@
 //
 //   node generar-env.js "RUTA_DEL_JSON" "URL_DE_TU_DATABASE" "TU_PASSWORD_ADMIN" "TU_GEMINI_API_KEY(opcional)"
 //
-// Ejemplo real (ajusta la ruta y el password a los tuyos):
+// Ejemplo (con datos de muestra, reemplaza cada valor por el tuyo):
 //
-//   node generar-env.js "C:\Users\Dell\Downloads\volcan-agua-sistema-firebase-adminsdk-fbsvc-49a5833856.json" "https://volcan-agua-sistema-default-rtdb.firebaseio.com" "Alexander5610*"
+//   node generar-env.js "C:\Users\TuUsuario\Downloads\tu-proyecto-firebase-adminsdk-xxxxx.json" "https://tu-proyecto-default-rtdb.firebaseio.com" "una-contraseña-larga-y-unica"
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -50,6 +51,10 @@ const privateKeyEscapada = credenciales.private_key.replace(/\n/g, '\\n');
 
 const urlFinal = databaseUrl || `https://${credenciales.project_id}-default-rtdb.firebaseio.com`;
 const passwordFinal = adminPassword || 'cambia-esta-clave';
+// Clave para firmar los tokens de sesion del panel administrativo y de
+// colaboradores. Se genera al azar cada vez que corres este script -- no
+// hace falta que la recuerdes ni la escribas a mano.
+const sessionSecretFinal = crypto.randomBytes(32).toString('hex');
 
 const contenidoEnv = `FIREBASE_PROJECT_ID=${credenciales.project_id}
 FIREBASE_CLIENT_EMAIL=${credenciales.client_email}
@@ -57,6 +62,8 @@ FIREBASE_PRIVATE_KEY="${privateKeyEscapada}"
 FIREBASE_DATABASE_URL=${urlFinal}
 PORT=3000
 ADMIN_PASSWORD=${passwordFinal}
+SESSION_SECRET=${sessionSecretFinal}
+CORS_ORIGIN=http://localhost:3000
 GEMINI_API_KEY=${geminiApiKey || ''}
 GEMINI_MODEL=gemini-flash-latest
 `;
@@ -68,6 +75,7 @@ console.log(`  FIREBASE_PROJECT_ID   = ${credenciales.project_id}`);
 console.log(`  FIREBASE_CLIENT_EMAIL = ${credenciales.client_email}`);
 console.log(`  FIREBASE_DATABASE_URL = ${urlFinal}`);
 console.log(`  ADMIN_PASSWORD        = ${passwordFinal}`);
+console.log('  SESSION_SECRET        = (generado al azar, no hace falta anotarlo)');
 if (!databaseUrl) {
   console.log('\n[AVISO] No pasaste la URL de la base de datos, se genero una por defecto.');
   console.log('  Verifica en Firebase Console > Realtime Database que coincida con la real.');
@@ -81,4 +89,8 @@ if (!geminiApiKey) {
   console.log('  igual, solo sin el texto en lenguaje natural generado por IA.');
   console.log('  La puedes agregar despues editando GEMINI_API_KEY en el .env.');
 }
+console.log('\n[IMPORTANTE] Cuando despliegues en Render (u otro hosting), edita ahi');
+console.log('  la variable CORS_ORIGIN con la URL real de tu sitio (por ejemplo');
+console.log('  https://volcan-agua-sistema.onrender.com), para que solo tu propio');
+console.log('  sitio pueda usar la API.');
 console.log('');

@@ -13,22 +13,37 @@ const {
   cambiarEstadoColaborador,
   eliminarColaborador,
 } = require('../services/colaboradores');
+const { requiereAdmin } = require('../middleware/autenticacion');
+const { generarToken } = require('../services/autenticacion');
+const { limitarIntentos } = require('../services/limitadorIntentos');
 
 // POST /api/colaboradores/login
-// Usado por la pantalla de acceso de colaboradores (no el admin).
-router.post('/login', async (req, res) => {
+// Publico: es la pantalla de acceso de colaboradores. Si las credenciales
+// son correctas, entrega un token firmado (rol: "colaborador") que el
+// navegador reenvia en las rutas compartidas con el panel admin (tiempo
+// real, alertas).
+router.post('/login', limitarIntentos('colaborador-login'), async (req, res) => {
   try {
     const { usuario, password } = req.body;
     const resultado = await iniciarSesionColaborador(db, { usuario, password });
     if (!resultado.ok) {
       return res.status(401).json({ error: resultado.error });
     }
-    res.json(resultado.colaborador);
+    const token = generarToken({
+      rol: 'colaborador',
+      id: resultado.colaborador.id,
+      nombre: resultado.colaborador.nombre,
+    });
+    res.json({ ...resultado.colaborador, token });
   } catch (error) {
     console.error('Error en login de colaborador:', error);
     res.status(500).json({ error: 'No se pudo iniciar sesion.' });
   }
 });
+
+// A partir de aqui, todas las rutas son exclusivas del panel administrativo
+// (gestionar las cuentas de colaboradores, no usarlas).
+router.use(requiereAdmin);
 
 // GET /api/colaboradores
 // Lista de colaboradores + su historial de accesos, para el panel del admin.

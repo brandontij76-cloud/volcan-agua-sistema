@@ -11,16 +11,31 @@
 // que el administrador pueda revisarlo en la pestana de Colaboradores.
 
 const crypto = require('crypto');
+const { promisify } = require('util');
 
-// Hash simple con sal, sin dependencias externas (no se guarda la
-// contrasena en texto plano). Suficiente para el alcance de este proyecto;
-// si se quisiera reforzar mas adelante, se recomienda migrar a bcrypt.
-function hashPassword(password, salt) {
-  return crypto.createHash('sha256').update(`${salt}:${password}`).digest('hex');
+const scryptAsync = promisify(crypto.scrypt);
+
+// Hash de contrasenas con scrypt (funcion nativa de Node, pensada
+// especificamente para contrasenas: es deliberadamente lenta y usa mucha
+// memoria, lo que hace muy caro probar millones de combinaciones por
+// fuerza bruta si alguien llegara a robar la base de datos). Antes se
+// usaba un SHA256 simple con sal, que es rapido de calcular y por lo
+// tanto mas facil de atacar por fuerza bruta si se filtran los hashes.
+async function hashPassword(password, salt) {
+  const derivado = await scryptAsync(password, salt, 64);
+  return derivado.toString('hex');
 }
 
 function generarSalt() {
-  return crypto.randomBytes(8).toString('hex');
+  return crypto.randomBytes(16).toString('hex');
+}
+
+// Compatibilidad con cuentas creadas antes de este cambio (que usaban
+// SHA256 simple, cuyo resultado siempre mide 64 caracteres hex). Sirve
+// solo para verificar el password en el proximo login; si coincide, se
+// vuelve a guardar automaticamente con scrypt (ver iniciarSesionColaborador).
+function hashPasswordSha256Legado(password, salt) {
+  return crypto.createHash('sha256').update(`${salt}:${password}`).digest('hex');
 }
 
 // Crea un colaborador nuevo. usuario puede ser correo o telefono.
@@ -45,7 +60,8 @@ async function crearColaborador(db, { usuario, password, nombre }) {
     usuario,
     nombre: nombre || usuario,
     salt,
-    passwordHash: hashPassword(password, salt),
+    passwordHash: await hashPassword(password, salt),
+    algoritmoHash: 'scrypt',
     activo: true,
     rol: 'colaborador',
     fechaCreacion: Date.now(),
@@ -71,9 +87,29 @@ async function iniciarSesionColaborador(db, { usuario, password }) {
   if (!colaborador.activo) {
     return { ok: false, error: 'Esta cuenta fue desactivada por el administrador.' };
   }
-  const hashCalculado = hashPassword(password, colaborador.salt);
-  if (hashCalculado !== colaborador.passwordHash) {
+
+  const esCuentaLegado = colaborador.algoritmoHash !== 'scrypt';
+  let coincide;
+  if (esCuentaLegado) {
+    coincide = hashPasswordSha256Legado(password, colaborador.salt) === colaborador.passwordHash;
+  } else {
+    coincide = (await hashPassword(password, colaborador.salt)) === colaborador.passwordHash;
+  }
+
+  if (!coincide) {
     return { ok: false, error: 'Usuario o contrasena incorrectos.' };
+  }
+
+  // Migracion silenciosa: si la cuenta todavia usaba el hash antiguo,
+  // ahora que sabemos la contrasena correcta se vuelve a guardar con
+  // scrypt, sin que el colaborador tenga que hacer nada.
+  if (esCuentaLegado) {
+    const nuevoSalt = generarSalt();
+    await db.ref(`colaboradores/${id}`).update({
+      salt: nuevoSalt,
+      passwordHash: await hashPassword(password, nuevoSalt),
+      algoritmoHash: 'scrypt',
+    });
   }
 
   const accesoRef = db.ref(`colaboradores/${id}/historialAccesos`).push();
@@ -89,7 +125,7 @@ async function iniciarSesionColaborador(db, { usuario, password }) {
 async function listarColaboradores(db) {
   const snapshot = await db.ref('colaboradores').once('value');
   const datos = snapshot.val() || {};
-  return Object.values(datos).map(({ salt, passwordHash, ...resto }) => resto);
+  return Object.values(datos).map(({ salt, passwordHash, algoritmoHash, ...resto }) => resto);
 }
 
 async function cambiarEstadoColaborador(db, id, activo) {

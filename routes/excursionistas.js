@@ -10,6 +10,7 @@ const router = express.Router();
 const { db } = require('../config/firebase');
 const { analizarUbicacion, estaEnLaCima, regresoAlPueblo, progresoEnRutaKm } = require('../services/deteccionAnomalias');
 const { registrarAlerta } = require('../services/gestionAlertas');
+const { requiereAdmin, requiereAdminOColaborador } = require('../middleware/autenticacion');
 
 // ---------------------------------------------------------------------
 // Validaciones de servidor (nunca hay que confiar solo en el navegador:
@@ -105,13 +106,19 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/excursionistas
-// Lista todos los excursionistas (para el panel administrativo).
-// Filtro opcional: /api/excursionistas?estado=activo
+// Lista todos los excursionistas. Filtro opcional: ?estado=activo
+// El panel administrativo pide la lista completa (sin filtro); el panel
+// de colaboradores (rol limitado) solo puede pedir ?estado=activo -- el
+// resto del historial no le corresponde ver a ese rol.
 // Nota: sin filtro de estado, no se incluyen los "pendientes" de una
 // agencia (nombres precargados por la Municipalidad que todavia nadie
 // confirma) — esos no son excursionistas reales todavia.
-router.get('/', async (req, res) => {
+router.get('/', requiereAdminOColaborador, async (req, res) => {
   try {
+    if (req.usuario.rol === 'colaborador' && req.query.estado !== 'activo') {
+      return res.status(403).json({ error: 'Este rol solo puede consultar excursionistas activos.' });
+    }
+
     const snapshot = await db.ref('excursionistas').once('value');
     const datos = snapshot.val() || {};
     let lista = Object.values(datos);
@@ -154,7 +161,7 @@ router.get('/agencia/:agenciaId/pendientes', async (req, res) => {
 // Vista PARA EL PANEL ADMINISTRATIVO: todos los excursionistas de una
 // agencia (pendientes y ya confirmados), con telefono incluido, para que
 // la Municipalidad revise la lista que cargo y corrija errores.
-router.get('/agencia/:agenciaId/completo', async (req, res) => {
+router.get('/agencia/:agenciaId/completo', requiereAdmin, async (req, res) => {
   try {
     const snapshot = await db.ref('excursionistas').once('value');
     const datos = snapshot.val() || {};
@@ -174,7 +181,7 @@ router.get('/agencia/:agenciaId/completo', async (req, res) => {
 // salida del grupo. Cada persona queda en estado "pendiente" hasta que
 // ella misma confirme su registro en registro.html (buscando su nombre
 // y escribiendo su telefono).
-router.post('/agencia/:agenciaId/lista', async (req, res) => {
+router.post('/agencia/:agenciaId/lista', requiereAdmin, async (req, res) => {
   try {
     const { personas, fechaSalidaEstimada, horaSalidaEstimada } = req.body;
 
@@ -223,7 +230,9 @@ router.post('/agencia/:agenciaId/lista', async (req, res) => {
 });
 
 // GET /api/excursionistas/:id
-router.get('/:id', async (req, res) => {
+// Solo lo usa el panel administrativo (ningun flujo publico necesita
+// consultar a un excursionista por id directamente).
+router.get('/:id', requiereAdmin, async (req, res) => {
   try {
     const snapshot = await db.ref(`excursionistas/${req.params.id}`).once('value');
     if (!snapshot.exists()) {
@@ -277,7 +286,7 @@ router.post('/:id/confirmar', async (req, res) => {
 // ejemplo, cuando un representante de agencia se equivoca al escribir el
 // nombre de uno de sus excursionistas). No toca ubicacion, estado ni nada
 // relacionado al monitoreo.
-router.patch('/:id/basico', async (req, res) => {
+router.patch('/:id/basico', requiereAdmin, async (req, res) => {
   try {
     const { nombre, telefono } = req.body;
     const ref = db.ref(`excursionistas/${req.params.id}`);
@@ -310,7 +319,7 @@ router.patch('/:id/basico', async (req, res) => {
 // Elimina un registro por completo. Pensado para corregir errores justo
 // despues de registrar (por ejemplo, un representante de agencia que
 // registro a la persona equivocada por error).
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requiereAdmin, async (req, res) => {
   try {
     const ref = db.ref(`excursionistas/${req.params.id}`);
     const snapshot = await ref.once('value');

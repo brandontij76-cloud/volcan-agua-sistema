@@ -5,7 +5,10 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 const { crearAgencia, listarAgencias, eliminarAgencia } = require('../services/agencias');
+const { requiereAdmin } = require('../middleware/autenticacion');
 
+// Publico: el formulario de registro (registro.html) necesita la lista de
+// agencias para el desplegable, sin haber iniciado sesion.
 router.get('/', async (req, res) => {
   try {
     const lista = await listarAgencias(db);
@@ -16,7 +19,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requiereAdmin, async (req, res) => {
   try {
     const { nombre, representante, telefono } = req.body;
     const nueva = await crearAgencia(db, { nombre, representante, telefono });
@@ -27,7 +30,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requiereAdmin, async (req, res) => {
   try {
     await eliminarAgencia(db, req.params.id);
     res.json({ mensaje: 'Agencia eliminada.' });

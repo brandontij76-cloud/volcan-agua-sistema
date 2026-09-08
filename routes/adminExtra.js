@@ -7,6 +7,10 @@ const ExcelJS = require('exceljs');
 const { db } = require('../config/firebase');
 const { calcularEstadisticasSemanales } = require('../services/estadisticas');
 const { generarReporteSemanalIA } = require('../services/asistenteIA');
+const { requiereAdmin } = require('../middleware/autenticacion');
+
+// Todas las rutas de este archivo son exclusivas del panel administrativo.
+router.use(requiereAdmin);
 
 // GET /api/admin/estadisticas
 router.get('/estadisticas', async (req, res) => {

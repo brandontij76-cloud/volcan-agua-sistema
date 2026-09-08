@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 const { registrarAlerta } = require('../services/gestionAlertas');
+const { requiereAdminOColaborador } = require('../middleware/autenticacion');
 
 // POST /api/alertas
 // Alerta manual: el excursionista presiona el boton de emergencia.
@@ -42,7 +43,9 @@ router.post('/', async (req, res) => {
 
 // GET /api/alertas
 // Lista las alertas. Filtro opcional: /api/alertas?atendida=false
-router.get('/', async (req, res) => {
+// Solo para el panel administrativo y el de colaboradores (quien esta en
+// peligro presiona el boton de arriba, pero no necesita ver esta lista).
+router.get('/', requiereAdminOColaborador, async (req, res) => {
   try {
     const snapshot = await db.ref('alertas').once('value');
     const datos = snapshot.val() || {};
@@ -64,8 +67,9 @@ router.get('/', async (req, res) => {
 // PATCH /api/alertas/:id/atender
 // Se marca una alerta como atendida. atendidaPor es el nombre de quien la
 // atendio (administrador o colaborador en la cima), para dejar trazabilidad
-// de quien respondio a cada emergencia.
-router.patch('/:id/atender', async (req, res) => {
+// de quien respondio a cada emergencia. Protegida: nadie ajeno al equipo
+// debe poder marcar una alerta real como "atendida" sin haber respondido.
+router.patch('/:id/atender', requiereAdminOColaborador, async (req, res) => {
   try {
     const { atendidaPor } = req.body;
     const ref = db.ref(`alertas/${req.params.id}`);

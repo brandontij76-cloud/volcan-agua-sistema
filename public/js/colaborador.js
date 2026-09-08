@@ -9,9 +9,30 @@ const INTERVALO_ACTUALIZACION_MS = 15000;
 let mapaTiempoReal, capaMarcadoresTiempoReal;
 let colaboradorActual = null;
 
+// El servidor entrega un token firmado al iniciar sesion correctamente
+// (junto con los datos del colaborador), y hay que reenviarlo en cada
+// peticion a las rutas que comparte con el panel administrativo (tiempo
+// real, alertas) -- antes, el servidor no verificaba nada ahi.
 function sesionActiva() {
   const guardado = sessionStorage.getItem('colaborador_actual');
   return guardado ? JSON.parse(guardado) : null;
+}
+
+function tokenColaborador() {
+  return sessionStorage.getItem('colaborador_token');
+}
+
+async function fetchColaborador(url, opciones = {}) {
+  const encabezados = { ...(opciones.headers || {}), Authorization: `Bearer ${tokenColaborador()}` };
+  const respuesta = await fetch(url, { ...opciones, headers: encabezados });
+  if (respuesta.status === 401) {
+    sessionStorage.removeItem('colaborador_actual');
+    sessionStorage.removeItem('colaborador_token');
+    alert('Tu sesion expiro. Vuelve a iniciar sesion.');
+    window.location.reload();
+    throw new Error('Sesion expirada.');
+  }
+  return respuesta;
 }
 
 function mostrarPanel(colaborador) {
@@ -41,8 +62,10 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
     if (!respuesta.ok) {
       throw new Error(resultado.error || 'Usuario o contraseña incorrectos.');
     }
-    sessionStorage.setItem('colaborador_actual', JSON.stringify(resultado));
-    mostrarPanel(resultado);
+    const { token, ...colaborador } = resultado;
+    sessionStorage.setItem('colaborador_actual', JSON.stringify(colaborador));
+    sessionStorage.setItem('colaborador_token', token);
+    mostrarPanel(colaborador);
   } catch (error) {
     errorBox.textContent = error.message;
     errorBox.classList.remove('d-none');
@@ -51,6 +74,7 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
 
 document.getElementById('btnCerrarSesion').addEventListener('click', () => {
   sessionStorage.removeItem('colaborador_actual');
+  sessionStorage.removeItem('colaborador_token');
   window.location.reload();
 });
 
@@ -88,7 +112,7 @@ const UMBRAL_MOVIMIENTO_M = 4;
 
 async function cargarTiempoReal() {
   try {
-    const respuesta = await fetch('/api/excursionistas?estado=activo');
+    const respuesta = await fetchColaborador('/api/excursionistas?estado=activo');
     const activos = await respuesta.json();
 
     document.getElementById('contadorEnRuta').textContent = activos.length;
@@ -134,7 +158,7 @@ async function cargarTiempoReal() {
 
 async function cargarAlertas() {
   try {
-    const respuesta = await fetch('/api/alertas');
+    const respuesta = await fetchColaborador('/api/alertas');
     const lista = await respuesta.json();
 
     const cuerpoTabla = document.getElementById('tablaAlertas');
@@ -176,7 +200,7 @@ async function cargarAlertas() {
 async function atenderAlerta(id) {
   const confirmar = confirm(`¿Marcar esta alerta como atendida por ${colaboradorActual.nombre}?`);
   if (!confirmar) return;
-  await fetch(`/api/alertas/${id}/atender`, {
+  await fetchColaborador(`/api/alertas/${id}/atender`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ atendidaPor: colaboradorActual.nombre }),
