@@ -366,7 +366,7 @@ async function construirContextoAdmin(db) {
       `para monitorear excursionistas del Volcan de Agua. Hablas con un miembro del equipo administrativo. ` +
       `Datos actuales del sistema: ${excursionistas.length} excursionistas registrados en total, ${activos} activos ahorita, ` +
       `${sinAtender} alertas sin atender, ${cimasAlcanzadas} personas han confirmado llegar a la cima. ` +
-      `El modelo de Machine Learning de riesgo esta ${modeloTexto}. ` +
+      `El modelo de IA de riesgo esta ${modeloTexto}. ` +
       `Responde de forma breve y profesional, en español. Si preguntan algo que no esta en estos datos, ` +
       `dilo con honestidad y ofrece explicar como funciona esa parte del sistema en general.`
     );
@@ -562,8 +562,8 @@ async function generarTextoReporteConGemini({ semanaActual, semanaAnterior, ries
   const comparacionAlertas = compararConSemanaAnterior(semanaActual.totalAlertas, semanaAnterior.totalAlertas);
 
   const riesgoTexto = riesgo?.muestraSuficiente
-    ? `el modelo de Machine Learning (entrenado con ${riesgo.totalMuestras} recorridos historicos, ${riesgo.metricas?.exactitud ?? '—'}% de exactitud) estima ${riesgo.probabilidadRiesgo}% de probabilidad de alerta para quienes salen a las 6:00 a.m.`
-    : 'el modelo de Machine Learning todavia no tiene suficientes recorridos registrados para estimar riesgo con confianza';
+    ? `el modelo de IA (entrenado con ${riesgo.totalMuestras} recorridos historicos, ${riesgo.metricas?.exactitud ?? '—'}% de exactitud) estima ${riesgo.probabilidadRiesgo}% de probabilidad de alerta para quienes salen a las 6:00 a.m.`
+    : 'el modelo de IA todavia no tiene suficientes recorridos registrados para estimar riesgo con confianza';
 
   const prompt =
     `Eres el asistente que redacta el reporte semanal para la jefatura de turismo de la ` +
@@ -608,7 +608,7 @@ function generarTextoReporteDeRespaldo({ semanaActual, semanaAnterior, riesgo, r
 
   if (riesgo?.muestraSuficiente) {
     partes.push(
-      `El modelo de Machine Learning (${riesgo.totalMuestras} recorridos históricos) estima ${riesgo.probabilidadRiesgo}% ` +
+      `El modelo de IA (${riesgo.totalMuestras} recorridos históricos) estima ${riesgo.probabilidadRiesgo}% ` +
       `de probabilidad de alerta para una salida típica a las 6:00 a.m.`
     );
   }

@@ -598,7 +598,7 @@ async function cargarEstadoModelo() {
     if (!estado.muestraSuficiente) {
       contenedor.innerHTML = `
         <div class="card p-3">
-          <div class="chip mb-2">${Iconos.svg('robot', 14)} Modelo de Machine Learning</div>
+          <div class="chip mb-2">${Iconos.svg('robot', 14)} Modelo de IA</div>
           <div class="text-muted small">
             Aún no hay suficientes recorridos registrados para entrenar el modelo
             (tiene ${estado.totalMuestras}, necesita mínimo ${estado.muestrasMinimasRequeridas}).
@@ -612,7 +612,7 @@ async function cargarEstadoModelo() {
     const m = estado.metricas;
     contenedor.innerHTML = `
       <div class="card p-3">
-        <div class="chip mb-2">${Iconos.svg('robot', 14)} Modelo de Machine Learning (regresión logística)</div>
+        <div class="chip mb-2">${Iconos.svg('robot', 14)} Modelo de IA (regresión logística)</div>
         <div class="row g-3">
           <div class="col-6 col-md-3">
             <div class="ficha-ruta-metrica-label">Entrenado con</div>
