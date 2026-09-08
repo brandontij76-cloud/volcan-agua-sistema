@@ -83,6 +83,7 @@ function iniciarPestanas() {
     cargarEstadisticas();
   });
   document.getElementById('btnActualizarEstadisticas').addEventListener('click', cargarEstadisticas);
+  document.getElementById('btnGenerarReporteSemanal').addEventListener('click', generarReporteSemanal);
 
   document.getElementById('tab-btn-agencias').addEventListener('shown.bs.tab', () => {
     if (!pestanasIniciadas.agencias) {
@@ -271,6 +272,42 @@ async function cargarEstadisticas() {
   } catch (error) {
     console.error('Error al cargar estadisticas:', error);
     contenedor.innerHTML = '<p class="text-danger">No se pudieron cargar las estadísticas.</p>';
+  }
+}
+
+// --- Reporte semanal redactado por IA (lunes a domingo) ---
+async function generarReporteSemanal() {
+  const contenedor = document.getElementById('contenedorReporteSemanal');
+  const btn = document.getElementById('btnGenerarReporteSemanal');
+
+  btn.disabled = true;
+  btn.textContent = 'Generando...';
+  contenedor.innerHTML = '<p class="text-muted">Analizando los datos de la semana y redactando el reporte…</p>';
+
+  try {
+    const respuesta = await fetch('/api/admin/reporte-semanal');
+    const r = await respuesta.json();
+    if (!respuesta.ok) throw new Error(r.error || 'No se pudo generar el reporte.');
+
+    const insigniaIA = r.generadoConIA
+      ? `<span class="chip">${Iconos.svg('destello', 13)} Redactado con IA (Gemini)</span>`
+      : `<span class="chip">${Iconos.svg('robot', 13)} Redactado por reglas (IA no disponible en este momento)</span>`;
+
+    contenedor.innerHTML = `
+      <div class="card p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+          <h6 class="mb-0">Semana del ${escaparHtml(r.rangoSemana.texto)}</h6>
+          ${insigniaIA}
+        </div>
+        <p class="mb-0" style="white-space: pre-line;">${escaparHtml(r.reporte)}</p>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error al generar el reporte semanal:', error);
+    contenedor.innerHTML = '<p class="text-danger">No se pudo generar el reporte semanal. Intenta de nuevo.</p>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generar reporte con IA';
   }
 }
 

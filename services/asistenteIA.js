@@ -528,6 +528,118 @@ async function generarSugerenciaCompleta(db, { horaSalida, fecha, personasGrupo 
   };
 }
 
+// ---------------------------------------------------------------------
+// REPORTE SEMANAL AUTOMATICO: cada semana, en vez de que el administrador
+// tenga que revisar manualmente las cifras y redactar un resumen para la
+// jefatura, el sistema calcula las estadisticas reales de la semana de
+// calendario (lunes a domingo) -- ver services/estadisticas.js -- y le
+// pide a Gemini que las redacte en un parrafo profesional, incluyendo lo
+// que dice el modelo de Machine Learning de riesgo sobre la semana.
+//
+// Igual que el resto del asistente: si Gemini no esta configurado o falla,
+// el reporte NO se cae ni inventa nada -- cae a un resumen redactado con
+// reglas simples a partir de los mismos numeros reales, y lo marca
+// honestamente como generadoConIA: false.
+// ---------------------------------------------------------------------
+function formatearFechaCorta(timestampMs) {
+  return new Date(timestampMs).toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
+}
+
+function compararConSemanaAnterior(actual, anterior) {
+  const diferencia = actual - anterior;
+  if (anterior === 0 && actual === 0) return 'igual que la semana pasada';
+  if (diferencia === 0) return 'igual que la semana pasada';
+  const palabra = diferencia > 0 ? 'más' : 'menos';
+  return `${Math.abs(diferencia)} ${palabra} que la semana pasada (${anterior})`;
+}
+
+function plural(cantidad, singular, plural) {
+  return cantidad === 1 ? singular : plural;
+}
+
+async function generarTextoReporteConGemini({ semanaActual, semanaAnterior, riesgo, rangoTexto }) {
+  const comparacionRegistros = compararConSemanaAnterior(semanaActual.totalRegistrados, semanaAnterior.totalRegistrados);
+  const comparacionAlertas = compararConSemanaAnterior(semanaActual.totalAlertas, semanaAnterior.totalAlertas);
+
+  const riesgoTexto = riesgo?.muestraSuficiente
+    ? `el modelo de Machine Learning (entrenado con ${riesgo.totalMuestras} recorridos historicos, ${riesgo.metricas?.exactitud ?? '—'}% de exactitud) estima ${riesgo.probabilidadRiesgo}% de probabilidad de alerta para quienes salen a las 6:00 a.m.`
+    : 'el modelo de Machine Learning todavia no tiene suficientes recorridos registrados para estimar riesgo con confianza';
+
+  const prompt =
+    `Eres el asistente que redacta el reporte semanal para la jefatura de turismo de la ` +
+    `Municipalidad de Santa Maria de Jesus, sobre el sistema "Cumbre Segura" (monitoreo de excursionistas ` +
+    `del Volcan de Agua). Semana del ${rangoTexto}. Datos reales de esta semana: ` +
+    `${semanaActual.totalRegistrados} excursionistas registrados (${comparacionRegistros}), ` +
+    `${semanaActual.cimaAlcanzada} llegaron a la cima, ${semanaActual.finalizados} finalizaron su recorrido, ` +
+    `${semanaActual.totalAlertas} alertas en total (${comparacionAlertas}), de las cuales ` +
+    `${semanaActual.alertasSinAtender} siguen sin atender y ${semanaActual.alertasAtendidas} ya fueron atendidas. ` +
+    `Por nivel: ${semanaActual.alertasPorNivel.leve} leves, ${semanaActual.alertasPorNivel.moderada} moderadas, ` +
+    `${semanaActual.alertasPorNivel.grave} graves. Ademas, ${riesgoTexto}. ` +
+    `Escribe un reporte breve (maximo 120 palabras), en español de Guatemala, tono profesional pero claro ` +
+    `(como para presentarselo a un jefe municipal), que resuma lo mas relevante de la semana y mencione si algo ` +
+    `necesita atencion. No inventes datos que no esten aqui. No uses markdown, solo texto plano en parrafos.`;
+
+  return llamarGemini(prompt);
+}
+
+// Respaldo sin Gemini: mismo contenido, redactado con reglas fijas a partir
+// de los mismos numeros reales (nunca se inventa nada).
+function generarTextoReporteDeRespaldo({ semanaActual, semanaAnterior, riesgo, rangoTexto }) {
+  const comparacionRegistros = compararConSemanaAnterior(semanaActual.totalRegistrados, semanaAnterior.totalRegistrados);
+  const comparacionAlertas = compararConSemanaAnterior(semanaActual.totalAlertas, semanaAnterior.totalAlertas);
+
+  const partes = [
+    `Semana del ${rangoTexto}: se ${plural(semanaActual.totalRegistrados, 'registró', 'registraron')} ` +
+      `${semanaActual.totalRegistrados} ${plural(semanaActual.totalRegistrados, 'excursionista', 'excursionistas')} (${comparacionRegistros}).`,
+    `${semanaActual.cimaAlcanzada} ${plural(semanaActual.cimaAlcanzada, 'llegó', 'llegaron')} a la cima y ` +
+      `${semanaActual.finalizados} ${plural(semanaActual.finalizados, 'finalizó', 'finalizaron')} su recorrido.`,
+    `Se ${plural(semanaActual.totalAlertas, 'generó', 'generaron')} ${semanaActual.totalAlertas} ` +
+      `${plural(semanaActual.totalAlertas, 'alerta', 'alertas')} (${comparacionAlertas}): ${semanaActual.alertasPorNivel.leve} leves, ` +
+      `${semanaActual.alertasPorNivel.moderada} moderadas y ${semanaActual.alertasPorNivel.grave} graves.`,
+  ];
+
+  if (semanaActual.alertasSinAtender > 0) {
+    partes.push(
+      `Atención: ${semanaActual.alertasSinAtender} ${plural(semanaActual.alertasSinAtender, 'alerta de esta semana sigue', 'alertas de esta semana siguen')} sin atender.`
+    );
+  } else if (semanaActual.totalAlertas > 0) {
+    partes.push('Todas las alertas de esta semana ya fueron atendidas.');
+  }
+
+  if (riesgo?.muestraSuficiente) {
+    partes.push(
+      `El modelo de Machine Learning (${riesgo.totalMuestras} recorridos históricos) estima ${riesgo.probabilidadRiesgo}% ` +
+      `de probabilidad de alerta para una salida típica a las 6:00 a.m.`
+    );
+  }
+
+  return partes.join(' ');
+}
+
+async function generarReporteSemanalIA(db, { offsetSemanas = 0 } = {}) {
+  const { calcularEstadisticasSemanaCalendario, obtenerRangoSemanaCalendario } = require('./estadisticas');
+
+  const [semanaActual, semanaAnterior, riesgo] = await Promise.all([
+    calcularEstadisticasSemanaCalendario(db, offsetSemanas),
+    calcularEstadisticasSemanaCalendario(db, offsetSemanas - 1),
+    predecirRiesgoRecorrido(db, { horaSalidaEstimada: '06:00', personasGrupo: 1, fechaRegistro: Date.now() }),
+  ]);
+
+  const rango = obtenerRangoSemanaCalendario(new Date(), offsetSemanas);
+  const rangoTexto = `${formatearFechaCorta(rango.desde)} al ${formatearFechaCorta(rango.hasta)}`;
+
+  const datos = { semanaActual, semanaAnterior, riesgo, rangoTexto };
+  const textoGemini = await generarTextoReporteConGemini(datos);
+
+  return {
+    rangoSemana: { desde: rango.desde, hasta: rango.hasta, texto: rangoTexto },
+    estadisticas: semanaActual,
+    estadisticasSemanaAnterior: semanaAnterior,
+    reporte: textoGemini || generarTextoReporteDeRespaldo(datos),
+    generadoConIA: Boolean(textoGemini),
+  };
+}
+
 module.exports = {
   obtenerPronosticoClima,
   climaEstacionalDeRespaldo,
@@ -537,4 +649,5 @@ module.exports = {
   generarSugerenciaCompleta,
   obtenerEstadoModelo,
   responderChat,
+  generarReporteSemanalIA,
 };

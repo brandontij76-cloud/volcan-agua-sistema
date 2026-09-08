@@ -6,6 +6,7 @@ const router = express.Router();
 const ExcelJS = require('exceljs');
 const { db } = require('../config/firebase');
 const { calcularEstadisticasSemanales } = require('../services/estadisticas');
+const { generarReporteSemanalIA } = require('../services/asistenteIA');
 
 // GET /api/admin/estadisticas
 router.get('/estadisticas', async (req, res) => {
@@ -15,6 +16,21 @@ router.get('/estadisticas', async (req, res) => {
   } catch (error) {
     console.error('Error al calcular estadisticas:', error);
     res.status(500).json({ error: 'No se pudieron calcular las estadisticas.' });
+  }
+});
+
+// GET /api/admin/reporte-semanal
+// Reporte de la semana de calendario (lunes a domingo) redactado por IA
+// (Gemini), con respaldo honesto por reglas si Gemini no esta disponible.
+// Query opcional: ?offsetSemanas=-1 para pedir la semana pasada, etc.
+router.get('/reporte-semanal', async (req, res) => {
+  try {
+    const offsetSemanas = parseInt(req.query.offsetSemanas, 10) || 0;
+    const reporte = await generarReporteSemanalIA(db, { offsetSemanas });
+    res.json(reporte);
+  } catch (error) {
+    console.error('Error al generar el reporte semanal:', error);
+    res.status(500).json({ error: 'No se pudo generar el reporte semanal.' });
   }
 });
 
