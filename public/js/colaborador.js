@@ -88,10 +88,9 @@ let marcadoresTiempoReal = new Map(); // id excursionista -> { marker, posicion,
 
 function iniciarMapaTiempoReal() {
   mapaTiempoReal = L.map('mapa-tiemporeal').setView([14.4650, -90.7350], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20,
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, USGS, Intermap, NRCAN, Esri Japan, METI, TomTom',
+    maxZoom: 18,
   }).addTo(mapaTiempoReal);
   capaMarcadoresTiempoReal = L.layerGroup().addTo(mapaTiempoReal);
   marcadoresTiempoReal = new Map();

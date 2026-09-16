@@ -45,10 +45,9 @@ function iconoPropio(enMovimiento) {
 function iniciarMapa(latInicial, lngInicial) {
   mapa = L.map('mapa').setView([latInicial, lngInicial], 14);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 20,
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, USGS, Intermap, NRCAN, Esri Japan, METI, TomTom',
+    maxZoom: 18,
   }).addTo(mapa);
 
   marcadorActual = L.marker([latInicial, lngInicial], { icon: iconoPropio(false) }).addTo(mapa);
