@@ -45,8 +45,10 @@ function iconoPropio(enMovimiento) {
 function iniciarMapa(latInicial, lngInicial) {
   mapa = L.map('mapa').setView([latInicial, lngInicial], 14);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
   }).addTo(mapa);
 
   marcadorActual = L.marker([latInicial, lngInicial], { icon: iconoPropio(false) }).addTo(mapa);

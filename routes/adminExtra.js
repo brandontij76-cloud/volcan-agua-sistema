@@ -7,10 +7,24 @@ const ExcelJS = require('exceljs');
 const { db } = require('../config/firebase');
 const { calcularEstadisticasSemanales } = require('../services/estadisticas');
 const { generarReporteSemanalIA } = require('../services/asistenteIA');
+const { listarRecorridos } = require('../services/recorridos');
 const { requiereAdmin } = require('../middleware/autenticacion');
 
 // Todas las rutas de este archivo son exclusivas del panel administrativo.
 router.use(requiereAdmin);
+
+// GET /api/admin/recorridos
+// Historial de todos los recorridos (nodo recorridos, separado del perfil
+// del excursionista), mas reciente primero.
+router.get('/recorridos', async (req, res) => {
+  try {
+    const lista = await listarRecorridos(db);
+    res.json(lista);
+  } catch (error) {
+    console.error('Error al listar recorridos:', error);
+    res.status(500).json({ error: 'No se pudieron obtener los recorridos.' });
+  }
+});
 
 // GET /api/admin/estadisticas
 router.get('/estadisticas', async (req, res) => {

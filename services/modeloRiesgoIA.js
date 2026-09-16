@@ -24,6 +24,8 @@
 // que recien empieza a operar: el modelo mejora conforme mas gente lo usa,
 // porque tiene mas ejemplos reales de los cuales aprender.
 
+const { obtenerParametrosSistema } = require('./configuracionSistema');
+
 const MUESTRAS_MINIMAS_PARA_ENTRENAR = 10;
 const TASA_APRENDIZAJE = 0.15;
 const EPOCAS = 800;
@@ -131,53 +133,112 @@ function calcularMetricas(modelo, caracteristicas, etiquetas) {
 }
 
 // ---------------------------------------------------------------------
+// Entrenamiento reutilizable: separa el entrenamiento del modelo (que no
+// depende de ningun recorrido en particular) de la prediccion para un
+// recorrido nuevo especifico. Asi, tanto predecirRiesgoRecorrido como
+// entrenarYRegistrarModelo (que ademas deja constancia en
+// historial_entrenamiento_ia) reusan el mismo entrenamiento.
+// ---------------------------------------------------------------------
+async function entrenarModeloActual(db) {
+  const [snapshotExcursionistas, snapshotAlertas] = await Promise.all([
+    db.ref('excursionistas').once('value'),
+    db.ref('alertas').once('value'),
+  ]);
+
+  const excursionistas = Object.values(snapshotExcursionistas.val() || {}).filter((e) => e.estado !== 'pendiente');
+  const alertas = Object.values(snapshotAlertas.val() || {});
+  const idsConAlerta = new Set(alertas.map((a) => a.excursionistaId));
+
+  const totalMuestras = excursionistas.length;
+
+  if (totalMuestras < MUESTRAS_MINIMAS_PARA_ENTRENAR) {
+    return { muestraSuficiente: false, totalMuestras, muestrasMinimasRequeridas: MUESTRAS_MINIMAS_PARA_ENTRENAR };
+  }
+
+  const caracteristicas = excursionistas.map(extraerCaracteristicas);
+  const etiquetas = excursionistas.map((e) => (idsConAlerta.has(e.id) ? 1 : 0));
+
+  const modelo = entrenarRegresionLogistica(caracteristicas, etiquetas);
+  const metricas = calcularMetricas(modelo, caracteristicas, etiquetas);
+
+  return { muestraSuficiente: true, totalMuestras, modelo, metricas };
+}
+
+// ---------------------------------------------------------------------
 // Punto de entrada: entrena con el historial de Firebase y predice
 // para un recorrido nuevo.
 // ---------------------------------------------------------------------
 async function predecirRiesgoRecorrido(db, entradaNueva) {
   try {
-    const [snapshotExcursionistas, snapshotAlertas] = await Promise.all([
-      db.ref('excursionistas').once('value'),
-      db.ref('alertas').once('value'),
-    ]);
+    const entrenamiento = await entrenarModeloActual(db);
 
-    const excursionistas = Object.values(snapshotExcursionistas.val() || {}).filter((e) => e.estado !== 'pendiente');
-    const alertas = Object.values(snapshotAlertas.val() || {});
-    const idsConAlerta = new Set(alertas.map((a) => a.excursionistaId));
-
-    const totalMuestras = excursionistas.length;
-
-    if (totalMuestras < MUESTRAS_MINIMAS_PARA_ENTRENAR) {
+    if (!entrenamiento.muestraSuficiente) {
       return {
         muestraSuficiente: false,
-        totalMuestras,
-        muestrasMinimasRequeridas: MUESTRAS_MINIMAS_PARA_ENTRENAR,
+        totalMuestras: entrenamiento.totalMuestras,
+        muestrasMinimasRequeridas: entrenamiento.muestrasMinimasRequeridas,
         probabilidadRiesgo: null,
         metricas: null,
       };
     }
 
-    const caracteristicas = excursionistas.map(extraerCaracteristicas);
-    const etiquetas = excursionistas.map((e) => (idsConAlerta.has(e.id) ? 1 : 0));
-
-    const modelo = entrenarRegresionLogistica(caracteristicas, etiquetas);
-    const metricas = calcularMetricas(modelo, caracteristicas, etiquetas);
-
     const xNuevo = extraerCaracteristicas(entradaNueva);
-    const probabilidad = predecir(modelo, xNuevo);
+    const probabilidad = predecir(entrenamiento.modelo, xNuevo);
+    const probabilidadRiesgo = Math.round(probabilidad * 100);
+
+    // 5.2.4 Modelo de negocio: traduce la probabilidad en una categoria
+    // comprensible, usando el umbral configurable (parametros_sistema).
+    const { umbralRiesgoAlto } = obtenerParametrosSistema();
+    let categoriaRiesgo = 'bajo';
+    if (probabilidadRiesgo >= umbralRiesgoAlto) categoriaRiesgo = 'alto';
+    else if (probabilidadRiesgo >= umbralRiesgoAlto / 2) categoriaRiesgo = 'moderado';
 
     return {
       muestraSuficiente: true,
-      totalMuestras,
-      probabilidadRiesgo: Math.round(probabilidad * 100),
-      metricas,
-      pesosAprendidos: modelo.pesos.map((p) => Number(p.toFixed(4))),
-      sesgoAprendido: Number(modelo.sesgo.toFixed(4)),
+      totalMuestras: entrenamiento.totalMuestras,
+      probabilidadRiesgo,
+      categoriaRiesgo,
+      metricas: entrenamiento.metricas,
+      pesosAprendidos: entrenamiento.modelo.pesos.map((p) => Number(p.toFixed(4))),
+      sesgoAprendido: Number(entrenamiento.modelo.sesgo.toFixed(4)),
     };
   } catch (error) {
     console.warn('[Modelo IA] No se pudo entrenar/predecir:', error.message);
     return { muestraSuficiente: false, totalMuestras: 0, probabilidadRiesgo: null, metricas: null, error: true };
   }
+}
+
+// ---------------------------------------------------------------------
+// Entrena el modelo y deja constancia del resultado en el nodo
+// historial_entrenamiento_ia: fecha, cantidad de registros usados, y las
+// metricas de desempeño (exactitud, precision, sensibilidad, matriz de
+// confusion). Se dispara explicitamente desde el panel administrativo
+// ("Reentrenar modelo"), no en cada prediccion, para que el historial
+// represente entrenamientos reales y no se llene de registros repetidos.
+// ---------------------------------------------------------------------
+async function entrenarYRegistrarModelo(db) {
+  const entrenamiento = await entrenarModeloActual(db);
+
+  const ref = db.ref('historial_entrenamiento_ia').push();
+  const registro = {
+    id: ref.key,
+    fechaEntrenamiento: Date.now(),
+    cantidadRegistros: entrenamiento.totalMuestras,
+    muestraSuficiente: entrenamiento.muestraSuficiente,
+    exactitud: entrenamiento.metricas?.exactitud ?? null,
+    precision: entrenamiento.metricas?.precision ?? null,
+    sensibilidad: entrenamiento.metricas?.exhaustividad ?? null,
+    matrizConfusion: entrenamiento.metricas?.matrizConfusion ?? null,
+  };
+  await ref.set(registro);
+
+  return registro;
+}
+
+async function obtenerHistorialEntrenamiento(db) {
+  const snapshot = await db.ref('historial_entrenamiento_ia').once('value');
+  const datos = snapshot.val() || {};
+  return Object.values(datos).sort((a, b) => b.fechaEntrenamiento - a.fechaEntrenamiento);
 }
 
 module.exports = {
@@ -186,5 +247,7 @@ module.exports = {
   predecir,
   calcularMetricas,
   predecirRiesgoRecorrido,
+  entrenarYRegistrarModelo,
+  obtenerHistorialEntrenamiento,
   MUESTRAS_MINIMAS_PARA_ENTRENAR,
 };

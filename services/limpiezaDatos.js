@@ -4,21 +4,32 @@
 // emergencia) de un excursionista no deben conservarse mas de lo necesario.
 // Este modulo elimina de Firebase, de forma automatica, cualquier
 // excursionista y sus alertas asociadas cuya antiguedad supere el limite
-// definido en RETENCION_MAXIMA_DIAS.
+// de dias definido en el nodo parametros_sistema (diasRetencionDatos) --
+// antes era un numero fijo en el codigo, ahora el administrador puede
+// ajustarlo desde el panel sin volver a desplegar el servidor.
 //
 // Firebase Realtime Database no tiene "borrado automatico por tiempo"
 // incorporado, asi que esto se resuelve corriendo esta rutina de forma
 // periodica (ver server.js, donde se llama cada hora con setInterval).
 
-const RETENCION_MAXIMA_DIAS = 3;
-const RETENCION_MAXIMA_MS = RETENCION_MAXIMA_DIAS * 24 * 60 * 60 * 1000;
+const { obtenerParametrosSistema } = require('./configuracionSistema');
 
-// Elimina excursionistas registrados hace mas de RETENCION_MAXIMA_DIAS,
+// Valor de respaldo, usado unicamente si el sistema arranca sin Firebase
+// configurado (ver el aviso en consola en server.js).
+const RETENCION_MAXIMA_DIAS = 3;
+
+function retencionMaximaMsActual() {
+  const dias = obtenerParametrosSistema().diasRetencionDatos ?? RETENCION_MAXIMA_DIAS;
+  return dias * 24 * 60 * 60 * 1000;
+}
+
+// Elimina excursionistas registrados hace mas dias que el limite vigente,
 // junto con su historial de ubicaciones (que vive dentro del mismo nodo).
 async function limpiarExcursionistasVencidos(db) {
   const snapshot = await db.ref('excursionistas').once('value');
   const datos = snapshot.val() || {};
   const ahora = Date.now();
+  const retencionMaximaMs = retencionMaximaMsActual();
 
   // Un "pendiente" de una agencia (nombre precargado por la Municipalidad,
   // que todavia nadie confirma) puede cargarse con dias de anticipacion a
@@ -34,7 +45,7 @@ async function limpiarExcursionistasVencidos(db) {
   }
 
   const idsAEliminar = Object.entries(datos)
-    .filter(([, ex]) => ahora - fechaLimiteDe(ex) > RETENCION_MAXIMA_MS)
+    .filter(([, ex]) => ahora - fechaLimiteDe(ex) > retencionMaximaMs)
     .map(([id]) => id);
 
   await Promise.all(idsAEliminar.map((id) => db.ref(`excursionistas/${id}`).remove()));
@@ -68,9 +79,10 @@ async function ejecutarLimpiezaDatos(db) {
   };
 
   if (resumen.excursionistasEliminados > 0 || resumen.alertasEliminadas > 0) {
+    const diasVigentes = obtenerParametrosSistema().diasRetencionDatos ?? RETENCION_MAXIMA_DIAS;
     console.log(
       `[Limpieza de datos] Se eliminaron ${resumen.excursionistasEliminados} excursionista(s) ` +
-      `y ${resumen.alertasEliminadas} alerta(s) con mas de ${RETENCION_MAXIMA_DIAS} dias de antiguedad.`
+      `y ${resumen.alertasEliminadas} alerta(s) con mas de ${diasVigentes} dias de antiguedad.`
     );
   }
 
@@ -80,5 +92,4 @@ async function ejecutarLimpiezaDatos(db) {
 module.exports = {
   ejecutarLimpiezaDatos,
   RETENCION_MAXIMA_DIAS,
-  RETENCION_MAXIMA_MS,
 };

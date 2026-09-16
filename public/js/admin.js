@@ -5,7 +5,7 @@
 const INTERVALO_ACTUALIZACION_MS = 15000;
 let mapaAdmin, capaMarcadores;
 let mapaTiempoReal, capaMarcadoresTiempoReal;
-let pestanasIniciadas = { tiemporeal: false, estadisticas: false, agencias: false, colaboradores: false };
+let pestanasIniciadas = { tiemporeal: false, estadisticas: false, agencias: false, colaboradores: false, configuracion: false };
 
 // --- Login ---
 // El servidor entrega un token firmado al iniciar sesion correctamente, y
@@ -157,6 +157,16 @@ function iniciarPestanas() {
   });
   document.getElementById('btnCrearColaborador').addEventListener('click', crearColaborador);
 
+  document.getElementById('tab-btn-configuracion').addEventListener('shown.bs.tab', () => {
+    if (!pestanasIniciadas.configuracion) {
+      cargarConfiguracion();
+      pestanasIniciadas.configuracion = true;
+    }
+  });
+  document.getElementById('btnGuardarParametros').addEventListener('click', guardarParametros);
+  document.getElementById('btnGuardarRuta').addEventListener('click', guardarDatosRuta);
+  document.getElementById('btnReentrenarModelo').addEventListener('click', reentrenarModelo);
+
   // Refresca el mapa de tiempo real junto con el resto de datos, solo si
   // la pestaña ya fue abierta al menos una vez (para no gastar llamadas
   // de mas si el administrador nunca la usa).
@@ -170,8 +180,10 @@ let marcadoresTiempoReal = new Map(); // id excursionista -> { marker, posicion 
 
 function iniciarMapaTiempoReal() {
   mapaTiempoReal = L.map('mapa-tiemporeal').setView([14.4650, -90.7350], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
   }).addTo(mapaTiempoReal);
   capaMarcadoresTiempoReal = L.layerGroup().addTo(mapaTiempoReal);
   marcadoresTiempoReal = new Map();
@@ -696,8 +708,10 @@ async function cargarEstadoModelo() {
 
 function iniciarMapaAdmin() {
   mapaAdmin = L.map('mapa-admin').setView([14.4650, -90.7350], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20,
   }).addTo(mapaAdmin);
   capaMarcadores = L.layerGroup().addTo(mapaAdmin);
 
@@ -851,4 +865,193 @@ function escaparHtml(texto) {
   const div = document.createElement('div');
   div.textContent = texto;
   return div.innerHTML;
+}
+
+// --- Configuración del sistema (configuracion_ruta, parametros_sistema, intents_chatbot) ---
+async function cargarConfiguracion() {
+  try {
+    const respuesta = await fetchAdmin('/api/admin/configuracion');
+    const datos = await respuesta.json();
+
+    const p = datos.parametrosSistema;
+    document.getElementById('paramUmbralDesviacion').value = p.umbralDesviacionMetros;
+    document.getElementById('paramUmbralInactividad').value = p.umbralInactividadMinutos;
+    document.getElementById('paramUmbralRiesgo').value = p.umbralRiesgoAlto;
+    document.getElementById('paramDiasRetencion').value = p.diasRetencionDatos;
+
+    const r = datos.configuracionRuta;
+    document.getElementById('rutaNombre').value = r.nombreRuta;
+    document.getElementById('rutaDistancia').value = r.distanciaKm;
+    document.getElementById('rutaDesnivel').value = r.desnivelM;
+    document.getElementById('rutaDificultad').value = r.dificultad;
+    document.getElementById('rutaRadioCima').value = r.radioCimaMetros;
+    document.getElementById('rutaRadioRetorno').value = r.radioRetornoMetros;
+
+    renderTablaIntents(datos.intentsChatbot);
+  } catch (error) {
+    console.error('Error al cargar configuración:', error);
+  }
+
+  cargarHistorialEntrenamiento();
+  cargarRecorridos();
+}
+
+async function guardarParametros() {
+  const errorBox = document.getElementById('errorParametros');
+  const exitoBox = document.getElementById('exitoParametros');
+  errorBox.classList.add('d-none');
+  exitoBox.classList.add('d-none');
+
+  try {
+    const respuesta = await fetchAdmin('/api/admin/configuracion/parametros', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        umbralDesviacionMetros: document.getElementById('paramUmbralDesviacion').value,
+        umbralInactividadMinutos: document.getElementById('paramUmbralInactividad').value,
+        umbralRiesgoAlto: document.getElementById('paramUmbralRiesgo').value,
+        diasRetencionDatos: document.getElementById('paramDiasRetencion').value,
+      }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudieron guardar los parámetros.');
+    exitoBox.textContent = '✅ Parámetros actualizados.';
+    exitoBox.classList.remove('d-none');
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('d-none');
+  }
+}
+
+async function guardarDatosRuta() {
+  const errorBox = document.getElementById('errorRuta');
+  const exitoBox = document.getElementById('exitoRuta');
+  errorBox.classList.add('d-none');
+  exitoBox.classList.add('d-none');
+
+  try {
+    const respuesta = await fetchAdmin('/api/admin/configuracion/ruta', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombreRuta: document.getElementById('rutaNombre').value,
+        distanciaKm: document.getElementById('rutaDistancia').value,
+        desnivelM: document.getElementById('rutaDesnivel').value,
+        dificultad: document.getElementById('rutaDificultad').value,
+        radioCimaMetros: document.getElementById('rutaRadioCima').value,
+        radioRetornoMetros: document.getElementById('rutaRadioRetorno').value,
+      }),
+    });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudieron guardar los datos de la ruta.');
+    exitoBox.textContent = '✅ Datos de la ruta actualizados.';
+    exitoBox.classList.remove('d-none');
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove('d-none');
+  }
+}
+
+function renderTablaIntents(intents) {
+  const cuerpo = document.getElementById('tablaIntents');
+  const categorias = Object.keys(intents);
+  if (categorias.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="3" class="text-muted text-center">Sin categorías.</td></tr>';
+    return;
+  }
+  cuerpo.innerHTML = categorias.map((categoria) => {
+    const intent = intents[categoria];
+    return `
+      <tr>
+        <td><strong>${escaparHtml(intent.nombreIntent)}</strong><div class="text-muted small">${escaparHtml(categoria)}</div></td>
+        <td>
+          <textarea class="form-control form-control-sm" rows="2" id="respuesta-${escaparHtml(categoria)}">${escaparHtml(intent.respuestaBase)}</textarea>
+        </td>
+        <td><button class="btn btn-sm btn-outline-secondary" onclick="guardarIntent('${categoria}')">Guardar</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function guardarIntent(categoria) {
+  const texto = document.getElementById(`respuesta-${categoria}`).value;
+  try {
+    const respuesta = await fetchAdmin(`/api/admin/configuracion/intents/${categoria}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ respuestaBase: texto }),
+    });
+    if (!respuesta.ok) throw new Error('No se pudo guardar.');
+  } catch (error) {
+    alert('No se pudo guardar la respuesta de "' + categoria + '". Intenta de nuevo.');
+    console.error(error);
+  }
+}
+
+async function cargarHistorialEntrenamiento() {
+  const cuerpo = document.getElementById('tablaHistorialEntrenamiento');
+  try {
+    const respuesta = await fetchAdmin('/api/admin/configuracion/historial-entrenamiento');
+    const lista = await respuesta.json();
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Aún no se ha entrenado el modelo.</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = lista.map((h) => `
+      <tr>
+        <td>${new Date(h.fechaEntrenamiento).toLocaleString('es-GT')}</td>
+        <td>${h.cantidadRegistros}</td>
+        <td>${h.exactitud != null ? h.exactitud + '%' : '—'}</td>
+        <td>${h.precision != null ? h.precision + '%' : '—'}</td>
+        <td>${h.sensibilidad != null ? h.sensibilidad + '%' : '—'}</td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    console.error('Error al cargar historial de entrenamiento:', error);
+    cuerpo.innerHTML = '<tr><td colspan="5" class="text-danger text-center">No se pudo cargar el historial.</td></tr>';
+  }
+}
+
+async function reentrenarModelo() {
+  const btn = document.getElementById('btnReentrenarModelo');
+  btn.disabled = true;
+  btn.textContent = 'Entrenando...';
+  try {
+    const respuesta = await fetchAdmin('/api/admin/configuracion/reentrenar-modelo', { method: 'POST' });
+    const resultado = await respuesta.json();
+    if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo reentrenar el modelo.');
+    if (!resultado.muestraSuficiente) {
+      alert(`Aún no hay suficientes recorridos registrados para entrenar (tiene ${resultado.cantidadRegistros}, necesita al menos 10).`);
+    }
+    cargarHistorialEntrenamiento();
+  } catch (error) {
+    alert('No se pudo reentrenar el modelo: ' + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Reentrenar modelo';
+  }
+}
+
+async function cargarRecorridos() {
+  const cuerpo = document.getElementById('tablaRecorridos');
+  try {
+    const respuesta = await fetchAdmin('/api/admin/recorridos');
+    const lista = await respuesta.json();
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Aún no hay recorridos registrados.</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = lista.map((r) => `
+      <tr>
+        <td>${escaparHtml(r.nombreExcursionista || '—')}</td>
+        <td><span class="chip">${escaparHtml(r.estadoRuta)}</span></td>
+        <td>${r.distanciaRecorridaKm != null ? r.distanciaRecorridaKm.toFixed(1) : '—'}</td>
+        <td>${r.cantidadPuntosGps ?? '—'}</td>
+        <td>${r.horaInicio ? new Date(r.horaInicio).toLocaleString('es-GT') : '—'}</td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    console.error('Error al cargar recorridos:', error);
+    cuerpo.innerHTML = '<tr><td colspan="5" class="text-danger text-center">No se pudieron cargar los recorridos.</td></tr>';
+  }
 }

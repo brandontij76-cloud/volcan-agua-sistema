@@ -13,7 +13,9 @@ const asistenteRoutes = require('./routes/asistente');
 const colaboradoresRoutes = require('./routes/colaboradores');
 const agenciasRoutes = require('./routes/agencias');
 const adminExtraRoutes = require('./routes/adminExtra');
-const { RUTA_REFERENCIA_VOLCAN_DE_AGUA, PUNTOS_REFERENCIA_RUTA } = require('./services/deteccionAnomalias');
+const configuracionRoutes = require('./routes/configuracion');
+const { obtenerConfiguracionRuta, inicializarConfiguracion } = require('./services/configuracionSistema');
+const { inicializarIntentsChatbot } = require('./services/intentsChatbot');
 const { ejecutarLimpiezaDatos, RETENCION_MAXIMA_DIAS } = require('./services/limpiezaDatos');
 const { db, firebaseConfigurado } = require('./config/firebase');
 const { generarToken } = require('./services/autenticacion');
@@ -62,13 +64,13 @@ app.use('/api/agencias', agenciasRoutes);
 
 // Ruta de referencia del sendero, usada por el mapa para dibujar el camino.
 app.get('/api/ruta-referencia', (req, res) => {
-  res.json(RUTA_REFERENCIA_VOLCAN_DE_AGUA);
+  res.json(obtenerConfiguracionRuta().rutaReferencia);
 });
 
 // Puntos con nombre a lo largo de la ruta (Capilla, Mirador, Cima, etc.),
 // usados por el mapa para mostrar marcadores de referencia.
 app.get('/api/puntos-referencia', (req, res) => {
-  res.json(PUNTOS_REFERENCIA_RUTA);
+  res.json(obtenerConfiguracionRuta().puntosReferencia);
 });
 
 // Login del panel administrativo (compara contra ADMIN_PASSWORD del .env).
@@ -93,6 +95,7 @@ app.post('/api/admin/login', limitarIntentos('admin-login'), (req, res) => {
 
 // Estadisticas semanales y exportacion a Excel (montado despues del login
 // de arriba para que /api/admin/login siempre lo maneje la ruta especifica).
+app.use('/api/admin/configuracion', configuracionRoutes);
 app.use('/api/admin', adminExtraRoutes);
 
 // Cualquier ruta no reconocida de la API responde 404 en formato JSON.
@@ -105,22 +108,36 @@ app.use('/api', (req, res) => {
 // mas de RETENCION_MAXIMA_DIAS. Ver services/limpiezaDatos.js para el detalle.
 const INTERVALO_LIMPIEZA_MS = 60 * 60 * 1000; // revisa cada hora
 
-if (firebaseConfigurado) {
-  ejecutarLimpiezaDatos(db).catch((error) => console.error('Error en limpieza de datos:', error));
-  setInterval(() => {
+async function iniciarServidor() {
+  if (firebaseConfigurado) {
+    // Crea (si hace falta) y carga en memoria los nodos configuracion_ruta
+    // y parametros_sistema ANTES de aceptar trafico, para que la primera
+    // peticion ya tenga esos valores listos (ver services/configuracionSistema.js).
+    try {
+      await inicializarConfiguracion(db);
+      await inicializarIntentsChatbot(db);
+    } catch (error) {
+      console.error('[AVISO] No se pudo inicializar configuracion_ruta/parametros_sistema/intents_chatbot:', error.message);
+    }
+
     ejecutarLimpiezaDatos(db).catch((error) => console.error('Error en limpieza de datos:', error));
-  }, INTERVALO_LIMPIEZA_MS);
-} else {
-  console.warn(
-    `[AVISO] Limpieza automatica de datos desactivada (Firebase no configurado). ` +
-    `Cuando conectes Firebase, los datos se borraran solos despues de ${RETENCION_MAXIMA_DIAS} dias.`
-  );
+    setInterval(() => {
+      ejecutarLimpiezaDatos(db).catch((error) => console.error('Error en limpieza de datos:', error));
+    }, INTERVALO_LIMPIEZA_MS);
+  } else {
+    console.warn(
+      `[AVISO] Limpieza automatica de datos desactivada (Firebase no configurado). ` +
+      `Cuando conectes Firebase, los datos se borraran solos despues de ${RETENCION_MAXIMA_DIAS} dias.`
+    );
+  }
+
+  app.listen(PORT, () => {
+    console.log(`\nServidor corriendo en http://localhost:${PORT}`);
+    console.log('Paginas disponibles:');
+    console.log(`  Registro          -> http://localhost:${PORT}/index.html`);
+    console.log(`  Monitor (GPS)     -> http://localhost:${PORT}/monitor.html`);
+    console.log(`  Panel administrativo -> http://localhost:${PORT}/admin.html\n`);
+  });
 }
 
-app.listen(PORT, () => {
-  console.log(`\nServidor corriendo en http://localhost:${PORT}`);
-  console.log('Paginas disponibles:');
-  console.log(`  Registro          -> http://localhost:${PORT}/index.html`);
-  console.log(`  Monitor (GPS)     -> http://localhost:${PORT}/monitor.html`);
-  console.log(`  Panel administrativo -> http://localhost:${PORT}/admin.html\n`);
-});
+iniciarServidor();

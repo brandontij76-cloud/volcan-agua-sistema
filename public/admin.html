@@ -83,6 +83,9 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-btn-colaboradores" data-bs-toggle="tab" data-bs-target="#tab-colaboradores" type="button" role="tab">Colaboradores</button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-btn-configuracion" data-bs-toggle="tab" data-bs-target="#tab-configuracion" type="button" role="tab">Configuración</button>
+      </li>
     </ul>
 
     <div class="tab-content" id="contenidoPestanasAdmin">
@@ -344,6 +347,133 @@
               </table>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ============ PESTAÑA: CONFIGURACIÓN ============ -->
+      <div class="tab-pane fade" id="tab-configuracion" role="tabpanel">
+        <p class="text-muted small">
+          Estos valores viven en la base de datos (nodos <code>configuracion_ruta</code>, <code>parametros_sistema</code>
+          e <code>intents_chatbot</code>), no en el código — se pueden ajustar aquí sin volver a desplegar el sistema.
+        </p>
+
+        <div class="row g-4 mb-4">
+          <div class="col-lg-6">
+            <h5 class="mb-3">Parámetros del sistema</h5>
+            <div class="card p-3">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label small">Desviación de ruta (m)</label>
+                  <input type="number" class="form-control" id="paramUmbralDesviacion">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small">Inactividad (min)</label>
+                  <input type="number" class="form-control" id="paramUmbralInactividad">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small">Riesgo alto (%)</label>
+                  <input type="number" class="form-control" id="paramUmbralRiesgo">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small">Retención de datos (días)</label>
+                  <input type="number" class="form-control" id="paramDiasRetencion">
+                </div>
+              </div>
+              <div id="errorParametros" class="alert alert-danger d-none py-2 my-2"></div>
+              <div id="exitoParametros" class="alert alert-success d-none py-2 my-2"></div>
+              <button class="btn btn-volcan mt-3" id="btnGuardarParametros">Guardar parámetros</button>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <h5 class="mb-3">Datos de la ruta</h5>
+            <div class="card p-3">
+              <div class="row g-2">
+                <div class="col-12">
+                  <label class="form-label small">Nombre de la ruta</label>
+                  <input type="text" class="form-control" id="rutaNombre">
+                </div>
+                <div class="col-4">
+                  <label class="form-label small">Distancia (km)</label>
+                  <input type="number" step="0.01" class="form-control" id="rutaDistancia">
+                </div>
+                <div class="col-4">
+                  <label class="form-label small">Desnivel (m)</label>
+                  <input type="number" class="form-control" id="rutaDesnivel">
+                </div>
+                <div class="col-4">
+                  <label class="form-label small">Dificultad</label>
+                  <input type="text" class="form-control" id="rutaDificultad">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small">Radio cima (m)</label>
+                  <input type="number" class="form-control" id="rutaRadioCima">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small">Radio retorno (m)</label>
+                  <input type="number" class="form-control" id="rutaRadioRetorno">
+                </div>
+              </div>
+              <div id="errorRuta" class="alert alert-danger d-none py-2 my-2"></div>
+              <div id="exitoRuta" class="alert alert-success d-none py-2 my-2"></div>
+              <button class="btn btn-volcan mt-3" id="btnGuardarRuta">Guardar datos de la ruta</button>
+            </div>
+          </div>
+        </div>
+
+        <h5 class="mb-3">Vocabulario del asistente (intents_chatbot)</h5>
+        <div class="table-responsive mb-4">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Respuesta base</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaIntents">
+              <tr><td colspan="3" class="text-muted text-center">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h5 class="mb-0">Modelo de IA de riesgo — historial de entrenamiento</h5>
+          <button class="btn btn-sm btn-volcan" id="btnReentrenarModelo">Reentrenar modelo</button>
+        </div>
+        <div class="table-responsive mb-4">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Registros</th>
+                <th>Exactitud</th>
+                <th>Precisión</th>
+                <th>Sensibilidad</th>
+              </tr>
+            </thead>
+            <tbody id="tablaHistorialEntrenamiento">
+              <tr><td colspan="5" class="text-muted text-center">Aún no se ha entrenado el modelo.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h5 class="mb-3">Recorridos (nodo <code>recorridos</code>)</h5>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Excursionista</th>
+                <th>Estado</th>
+                <th>Distancia (km)</th>
+                <th>Puntos GPS</th>
+                <th>Inicio</th>
+              </tr>
+            </thead>
+            <tbody id="tablaRecorridos">
+              <tr><td colspan="5" class="text-muted text-center">Cargando…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -23,7 +23,8 @@
 // sistema no se cae: usa reglas estacionales genericas como respaldo, y lo
 // indica claramente en la respuesta (fuenteClima: 'api' | 'estacional').
 
-const { CIMA_VOLCAN_DE_AGUA, INFO_RUTA_VOLCAN_DE_AGUA } = require('./deteccionAnomalias');
+const { obtenerConfiguracionRuta } = require('./configuracionSistema');
+const { obtenerRespuestaBase } = require('./intentsChatbot');
 const { predecirRiesgoRecorrido } = require('./modeloRiesgoIA');
 const { clasificarPregunta } = require('./clasificadorPreguntas');
 
@@ -38,9 +39,10 @@ async function obtenerPronosticoClima(fechaHoraISO) {
   const timeout = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_MS);
 
   try {
+    const { coordenadasCima } = obtenerConfiguracionRuta();
     const url =
       `https://api.open-meteo.com/v1/forecast` +
-      `?latitude=${CIMA_VOLCAN_DE_AGUA.lat}&longitude=${CIMA_VOLCAN_DE_AGUA.lng}` +
+      `?latitude=${coordenadasCima.lat}&longitude=${coordenadasCima.lng}` +
       `&hourly=temperature_2m,precipitation_probability,windspeed_10m,cloudcover` +
       `&timezone=America%2FGuatemala`;
 
@@ -381,10 +383,11 @@ async function construirContextoAdmin(db) {
 }
 
 function construirContextoUsuario() {
+  const { distanciaKm, desnivelM, dificultad } = obtenerConfiguracionRuta();
   return (
     `Eres el asistente de "Cumbre Segura" para excursionistas que van a subir al Volcan de Agua, Guatemala. ` +
-    `Datos de la ruta: ${INFO_RUTA_VOLCAN_DE_AGUA.distanciaKm} km, ${INFO_RUTA_VOLCAN_DE_AGUA.desnivelM} m de desnivel, ` +
-    `dificultad "${INFO_RUTA_VOLCAN_DE_AGUA.dificultad}". El sistema permite registrarse, compartir ubicacion GPS ` +
+    `Datos de la ruta: ${distanciaKm} km, ${desnivelM} m de desnivel, ` +
+    `dificultad "${dificultad}". El sistema permite registrarse, compartir ubicacion GPS ` +
     `en tiempo real, presionar un boton de emergencia, confirmar la llegada a la cima, y finalizar el recorrido. ` +
     `Responde dudas sobre el recorrido, que llevar, seguridad, clima o el uso del sistema. Se breve, calido, ` +
     `en español de Guatemala. Si preguntan algo fuera de este tema, redirige amablemente al tema del recorrido.`
@@ -423,39 +426,26 @@ async function generarRespuestaRespaldo(db, { pregunta, contexto }) {
       return `Para tu recorrido te recomiendo llevar: ${recomendaciones.slice(0, 5).join('; ')}.`;
     }
 
-    case 'ruta':
+    case 'ruta': {
+      const { distanciaKm, desnivelM, dificultad } = obtenerConfiguracionRuta();
       return (
-        `La ruta del Volcán de Agua tiene ${INFO_RUTA_VOLCAN_DE_AGUA.distanciaKm} km (ida y vuelta), ` +
-        `${INFO_RUTA_VOLCAN_DE_AGUA.desnivelM} m de desnivel, y dificultad "${INFO_RUTA_VOLCAN_DE_AGUA.dificultad}". ` +
+        `La ruta del Volcán de Agua tiene ${distanciaKm} km (ida y vuelta), ` +
+        `${desnivelM} m de desnivel, y dificultad "${dificultad}". ` +
         `Sal temprano y calcula suficiente tiempo para subir y bajar con luz de día.`
       );
+    }
 
     case 'emergencia':
-      return (
-        `Si presionas el botón de pánico, el sistema envía tu ubicación GPS actual al equipo administrativo ` +
-        `de inmediato para que puedan ubicarte y coordinar ayuda. También detectamos automáticamente si te ` +
-        `desvías mucho de la ruta o si dejas de moverte por un buen rato, y eso genera una alerta aunque no ` +
-        `presiones el botón. Si tienes una emergencia real, presiona el botón y, si tienes señal, contacta ` +
-        `también directamente a los números de emergencia locales.`
-      );
+      return obtenerRespuestaBase('emergencia');
 
     case 'registro_uso':
-      return (
-        `Para usar el sistema: te registras con tus datos y un contacto de emergencia, dejas la página de ` +
-        `monitoreo abierta durante el recorrido (tu ubicación se envía cada 30 segundos), presionas ` +
-        `"Llegué a la cima" cuando estés cerca de la cumbre, y "Finalizar recorrido" cuando estés de regreso ` +
-        `cerca del pueblo.`
-      );
+      return obtenerRespuestaBase('registro_uso');
 
     case 'saludo':
-      return '¡Hola! Soy el asistente de Cumbre Segura. Puedo ayudarte con dudas sobre la ruta, el clima, qué llevar, o cómo funciona el sistema.';
+      return obtenerRespuestaBase('saludo');
 
     default:
-      return (
-        `No estoy seguro de haber entendido bien tu pregunta (esto lo estoy respondiendo con mi modo de respaldo, ` +
-        `sin conexión a Gemini en este momento). Puedo ayudarte con temas de clima, equipo necesario, la ruta, ` +
-        `el botón de emergencia, o cómo usar el sistema — intenta reformular tu pregunta sobre alguno de esos temas.`
-      );
+      return obtenerRespuestaBase('default');
   }
 }
 

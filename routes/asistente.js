@@ -13,7 +13,7 @@ const {
   obtenerEstadoModelo,
   responderChat,
 } = require('../services/asistenteIA');
-const { INFO_RUTA_VOLCAN_DE_AGUA } = require('../services/deteccionAnomalias');
+const { obtenerConfiguracionRuta } = require('../services/configuracionSistema');
 
 // GET /api/asistente/recomendaciones?horaSalida=06:30&fecha=2026-08-10
 // "fecha" es opcional (por defecto hoy). Se usa antes de registrarse, para
@@ -44,7 +44,8 @@ router.get('/ficha-ruta', async (req, res) => {
     if (!clima) {
       clima = climaEstacionalDeRespaldo(new Date());
     }
-    res.json({ infoRuta: INFO_RUTA_VOLCAN_DE_AGUA, clima });
+    const { nombreRuta, distanciaKm, desnivelM, dificultad } = obtenerConfiguracionRuta();
+    res.json({ infoRuta: { nombre: nombreRuta, distanciaKm, desnivelM, dificultad }, clima });
   } catch (error) {
     console.error('Error al generar ficha de ruta:', error);
     res.status(500).json({ error: 'No se pudo obtener la ficha de la ruta en este momento.' });

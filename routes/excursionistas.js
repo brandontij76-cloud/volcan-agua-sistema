@@ -10,6 +10,7 @@ const router = express.Router();
 const { db } = require('../config/firebase');
 const { analizarUbicacion, estaEnLaCima, regresoAlPueblo, progresoEnRutaKm } = require('../services/deteccionAnomalias');
 const { registrarAlerta } = require('../services/gestionAlertas');
+const { registrarProgresoRecorrido, finalizarRecorrido, marcarCimaEnRecorrido } = require('../services/recorridos');
 const { requiereAdmin, requiereAdminOColaborador } = require('../middleware/autenticacion');
 
 // ---------------------------------------------------------------------
@@ -368,6 +369,20 @@ router.post('/:id/ubicacion', async (req, res) => {
       [`historialUbicaciones/${nuevaUbicacion.timestamp}`]: nuevaUbicacion,
     });
 
+    // 2.5) Actualizar el resumen en el nodo recorridos (separado del perfil
+    // del excursionista). Si esto llegara a fallar por cualquier motivo, no
+    // debe interrumpir la respuesta al excursionista ni la deteccion de
+    // alertas, que ya se completaron arriba -- por eso va en su propio
+    // try/catch, solo registrando el error en consola.
+    try {
+      await registrarProgresoRecorrido(db, req.params.id, {
+        nombreExcursionista: excursionista.nombre,
+        distanciaRecorridaKm: kmRecorridos,
+      });
+    } catch (errorRecorrido) {
+      console.error('[recorridos] No se pudo actualizar el resumen del recorrido:', errorRecorrido.message);
+    }
+
     // 3) Si el analisis detecto algo anormal, registrar (o actualizar) la alerta.
     // Se usa registrarAlerta para que, mientras la misma persona siga con la
     // misma anomalia sin atender, no se acumulen filas repetidas en el panel.
@@ -412,6 +427,12 @@ router.patch('/:id/cima', async (req, res) => {
       cumbreUbicacionConfirmada: coincideConCima,
     });
 
+    try {
+      await marcarCimaEnRecorrido(db, req.params.id);
+    } catch (errorRecorrido) {
+      console.error('[recorridos] No se pudo marcar la cima en el recorrido:', errorRecorrido.message);
+    }
+
     res.json({
       mensaje: '¡Felicidades por llegar a la cima!',
       cumbreUbicacionConfirmada: coincideConCima,
@@ -443,6 +464,12 @@ router.patch('/:id/finalizar', async (req, res) => {
       fechaFinalizacion: Date.now(),
       retornoConfirmado, // true/false/null (null = sin ubicacion para verificar)
     });
+
+    try {
+      await finalizarRecorrido(db, req.params.id);
+    } catch (errorRecorrido) {
+      console.error('[recorridos] No se pudo finalizar el recorrido:', errorRecorrido.message);
+    }
 
     res.json({
       mensaje: 'Recorrido finalizado.',
