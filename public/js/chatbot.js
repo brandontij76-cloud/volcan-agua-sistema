@@ -4,6 +4,14 @@
 // excursionistas (contexto "usuario") como para el panel administrativo
 // (contexto "admin", con datos en vivo del sistema). Se inicializa
 // llamando a iniciarChatbot('usuario') o iniciarChatbot('admin').
+//
+// El boton flotante muestra la mascota animada del sistema (ver
+// Iconos.mascotaChatbot en iconos.js: un robot con los mismos colores del
+// sistema, que respira/saluda/parpadea solo con CSS, en vez del icono fijo
+// de mensaje que tenia antes). Encima lleva una insignia (badge) que
+// aparece solo cuando el asistente ya respondio (a un excursionista o a un
+// admin) y la persona todavia no ha abierto el panel a leerla; desaparece
+// en cuanto lo abre.
 
 let historialChat = [];
 let contextoChat = 'usuario';
@@ -15,7 +23,8 @@ function iniciarChatbot(contexto) {
   contenedor.id = 'chatbotFlotante';
   contenedor.innerHTML = `
     <button id="chatbotBoton" class="chatbot-boton" aria-label="Abrir asistente">
-      ${Iconos.svg('chat', 24)}
+      ${Iconos.mascotaChatbot()}
+      <span id="chatbotBadge" class="chatbot-badge d-none">${Iconos.svg('chat', 10)}</span>
     </button>
     <div id="chatbotPanel" class="chatbot-panel d-none">
       <div class="chatbot-header">
@@ -38,6 +47,7 @@ function iniciarChatbot(contexto) {
   document.body.appendChild(contenedor);
 
   const boton = document.getElementById('chatbotBoton');
+  const badge = document.getElementById('chatbotBadge');
   const panel = document.getElementById('chatbotPanel');
   const cerrar = document.getElementById('chatbotCerrar');
   const formulario = document.getElementById('chatbotFormulario');
@@ -46,7 +56,12 @@ function iniciarChatbot(contexto) {
 
   boton.addEventListener('click', () => {
     panel.classList.toggle('d-none');
-    if (!panel.classList.contains('d-none')) input.focus();
+    if (!panel.classList.contains('d-none')) {
+      input.focus();
+      // Ya lo esta abriendo para leer la respuesta: apaga la insignia de
+      // "hay respuesta nueva".
+      ocultarBadgeRespuesta(boton, badge);
+    }
   });
   cerrar.addEventListener('click', () => panel.classList.add('d-none'));
 
@@ -71,6 +86,9 @@ function iniciarChatbot(contexto) {
       const datos = await respuesta.json();
       indicador.textContent = datos.respuesta || 'No se pudo obtener respuesta.';
       historialChat.push({ rol: 'asistente', texto: datos.respuesta || '' });
+      // El asistente ya respondio: se avisa en el boton flotante con la
+      // insignia de mensaje hasta que la persona vuelva a abrir el panel.
+      mostrarBadgeRespuesta(boton, badge);
     } catch (error) {
       indicador.textContent = 'No se pudo conectar con el asistente. Intenta de nuevo.';
       console.error(error);
@@ -80,6 +98,19 @@ function iniciarChatbot(contexto) {
       mensajes.scrollTop = mensajes.scrollHeight;
     }
   });
+}
+
+// Insignia de "hay una respuesta nueva sin leer": aparece sobre la
+// mascota y le agrega al boton una animacion de pulso sutil en el halo
+// (ver .chatbot-boton--nuevo en css/style.css).
+function mostrarBadgeRespuesta(boton, badge) {
+  badge.classList.remove('d-none');
+  boton.classList.add('chatbot-boton--nuevo');
+}
+
+function ocultarBadgeRespuesta(boton, badge) {
+  badge.classList.add('d-none');
+  boton.classList.remove('chatbot-boton--nuevo');
 }
 
 function agregarMensaje(contenedorMensajes, texto, quien, esTemporal) {

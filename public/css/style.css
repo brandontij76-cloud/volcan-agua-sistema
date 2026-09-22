@@ -692,6 +692,7 @@ a:hover { color: var(--ambar); }
 }
 
 .chatbot-boton {
+  position: relative;
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -706,6 +707,82 @@ a:hover { color: var(--ambar); }
   transition: transform 0.15s ease;
 }
 .chatbot-boton:hover { transform: scale(1.06); }
+
+/* Se agrega cuando el asistente ya respondio (a un excursionista o a un
+   admin) y la persona todavia no ha abierto el panel a leerla: aparece la
+   insignia de mensaje (.chatbot-badge) y este pulso sutil en el halo del
+   boton ayuda a que se note sin ser invasivo. */
+.chatbot-boton--nuevo {
+  animation: chatbotPulso 1.6s ease-in-out infinite;
+}
+@keyframes chatbotPulso {
+  0%, 100% { box-shadow: var(--sombra-fuerte), 0 0 0 6px rgba(52, 211, 153, 0.16); }
+  50% { box-shadow: var(--sombra-fuerte), 0 0 0 13px rgba(52, 211, 153, 0.3); }
+}
+
+/* ---------- Mascota del chatbot ---------- */
+/* Robot armado con los mismos colores del sistema (ver Iconos.mascotaChatbot
+   en iconos.js). Se anima solo con CSS -- no necesita JavaScript en un
+   bucle ni imagenes/GIFs pesados. */
+.mascota {
+  width: 34px;
+  height: 34px;
+  overflow: visible;
+  display: block;
+}
+
+.mascota-cuerpo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascotaFlote 2.6s ease-in-out infinite;
+}
+@keyframes mascotaFlote {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.2px); }
+}
+
+/* El brazo saluda dos veces y despues descansa varios segundos, en vez de
+   agitarse sin parar (se veria nervioso, no amigable). */
+.mascota-brazo {
+  transform-box: fill-box;
+  transform-origin: 90% 15%;
+  animation: mascotaSaludo 3.2s ease-in-out infinite;
+}
+@keyframes mascotaSaludo {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  62% { transform: rotate(-22deg); }
+  69% { transform: rotate(-4deg); }
+  76% { transform: rotate(-22deg); }
+  83% { transform: rotate(0deg); }
+}
+
+.mascota-ojos {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascotaParpadeo 4.5s ease-in-out infinite;
+}
+@keyframes mascotaParpadeo {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.15); }
+}
+
+/* Insignia de "respuesta nueva sin leer" sobre la mascota (ver
+   mostrarBadgeRespuesta/ocultarBadgeRespuesta en chatbot.js). */
+.chatbot-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--texto-principal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px var(--teal-fuerte);
+  color: var(--teal-fuerte);
+}
+.chatbot-badge svg { width: 10px; height: 10px; }
 
 .chatbot-panel {
   position: absolute;

@@ -76,6 +76,41 @@ const Iconos = {
   },
 
   /**
+   * Mascota animada del chatbot flotante (public/js/chatbot.js). A
+   * diferencia de los demas iconos (linea, un solo color heredado con
+   * currentColor), esta es una figura de varias piezas con colores fijos
+   * del propio sistema (--teal, --teal-fuerte, --bg-card,
+   * --texto-principal), para que combine con el boton verde sin importar
+   * el tema dia/tarde/noche activo (el boton del chat siempre usa el
+   * mismo gradiente teal). Se mueve sola con CSS: respira, saluda con el
+   * brazo cada pocos segundos y parpadea (ver .mascota-* en
+   * css/style.css) -- no depende de JavaScript para animarse.
+   */
+  mascotaChatbot() {
+    return `
+      <svg class="mascota" viewBox="0 0 40 40" aria-hidden="true">
+        <g class="mascota-cuerpo">
+          <line x1="20" y1="7" x2="20" y2="3" stroke="var(--texto-principal)" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="20" cy="2.4" r="1.7" fill="var(--teal)"/>
+          <rect x="8" y="7" width="24" height="18" rx="8" fill="var(--texto-principal)"/>
+          <rect x="11.5" y="13.5" width="17" height="8" rx="4" fill="var(--bg-card)"/>
+          <g class="mascota-ojos">
+            <circle cx="16" cy="17.5" r="2" fill="var(--teal)"/>
+            <circle cx="24" cy="17.5" r="2" fill="var(--teal)"/>
+          </g>
+          <rect x="13" y="26.5" width="14" height="10" rx="5" fill="var(--texto-principal)"/>
+          <circle cx="20" cy="31.5" r="2" fill="var(--teal)"/>
+          <g class="mascota-brazo">
+            <rect x="27.5" y="24.5" width="4.4" height="11" rx="2.2" fill="var(--texto-principal)" transform="rotate(18 29.7 24.5)"/>
+            <circle cx="32.6" cy="22.7" r="2.3" fill="var(--texto-principal)"/>
+          </g>
+          <rect x="8.2" y="27.5" width="4" height="8.5" rx="2" fill="var(--texto-principal)"/>
+        </g>
+      </svg>
+    `;
+  },
+
+  /**
    * Reemplaza todo elemento `<span data-icono="nombre">` de la pagina por
    * su SVG correspondiente. Se llama una vez al cargar cada pantalla.
    */
