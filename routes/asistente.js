@@ -14,6 +14,7 @@ const {
   responderChat,
 } = require('../services/asistenteIA');
 const { obtenerConfiguracionRuta } = require('../services/configuracionSistema');
+const { registrarConsultaClima } = require('../services/historialClima');
 
 // GET /api/asistente/recomendaciones?horaSalida=06:30&fecha=2026-08-10
 // "fecha" es opcional (por defecto hoy). Se usa antes de registrarse, para
@@ -44,6 +45,7 @@ router.get('/ficha-ruta', async (req, res) => {
     if (!clima) {
       clima = climaEstacionalDeRespaldo(new Date());
     }
+    await registrarConsultaClima(db, { clima, origen: 'ficha_ruta' });
     const { nombreRuta, distanciaKm, desnivelM, dificultad } = obtenerConfiguracionRuta();
     res.json({ infoRuta: { nombre: nombreRuta, distanciaKm, desnivelM, dificultad }, clima });
   } catch (error) {

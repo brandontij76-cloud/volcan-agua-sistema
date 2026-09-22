@@ -8,6 +8,8 @@ const { db } = require('../config/firebase');
 const { calcularEstadisticasSemanales } = require('../services/estadisticas');
 const { generarReporteSemanalIA } = require('../services/asistenteIA');
 const { listarRecorridos } = require('../services/recorridos');
+const { listarConversaciones } = require('../services/conversacionesChatbot');
+const { listarHistorialClima } = require('../services/historialClima');
 const { requiereAdmin } = require('../middleware/autenticacion');
 
 // Todas las rutas de este archivo son exclusivas del panel administrativo.
@@ -23,6 +25,35 @@ router.get('/recorridos', async (req, res) => {
   } catch (error) {
     console.error('Error al listar recorridos:', error);
     res.status(500).json({ error: 'No se pudieron obtener los recorridos.' });
+  }
+});
+
+// GET /api/admin/conversaciones-chatbot
+// Bitacora real del chatbot (nodo conversaciones_chatbot): cada pregunta
+// que hizo un excursionista o un admin, la respuesta que se dio, y si la
+// redacto Gemini o el clasificador de respaldo. Mas reciente primero.
+router.get('/conversaciones-chatbot', async (req, res) => {
+  try {
+    const conversaciones = await listarConversaciones(db);
+    res.json(conversaciones);
+  } catch (error) {
+    console.error('Error al listar conversaciones del chatbot:', error);
+    res.status(500).json({ error: 'No se pudieron obtener las conversaciones del chatbot.' });
+  }
+});
+
+// GET /api/admin/historial-clima
+// Bitacora de cada consulta de clima usada por el asistente (nodo
+// historial_clima): de donde se pidio (recomendaciones, ficha de ruta,
+// chatbot), y si vino de la API real de Open-Meteo o del respaldo
+// estacional. Mas reciente primero.
+router.get('/historial-clima', async (req, res) => {
+  try {
+    const historial = await listarHistorialClima(db);
+    res.json(historial);
+  } catch (error) {
+    console.error('Error al listar el historial de clima:', error);
+    res.status(500).json({ error: 'No se pudo obtener el historial de clima.' });
   }
 });
 

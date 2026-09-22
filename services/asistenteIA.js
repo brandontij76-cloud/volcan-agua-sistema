@@ -27,6 +27,8 @@ const { obtenerConfiguracionRuta } = require('./configuracionSistema');
 const { obtenerRespuestaBase } = require('./intentsChatbot');
 const { predecirRiesgoRecorrido } = require('./modeloRiesgoIA');
 const { clasificarPregunta } = require('./clasificadorPreguntas');
+const { registrarConsultaClima } = require('./historialClima');
+const { registrarConversacion } = require('./conversacionesChatbot');
 
 const TIEMPO_LIMITE_MS = 6000; // clima (Open-Meteo es rapido)
 const TIEMPO_LIMITE_GEMINI_MS = 45000; // Gemini puede tardar mas, sobre todo en el plan gratuito de Render
@@ -413,6 +415,7 @@ async function generarRespuestaRespaldo(db, { pregunta, contexto }) {
     case 'clima': {
       clima = await obtenerPronosticoClima(new Date().toISOString());
       if (!clima) clima = climaEstacionalDeRespaldo(new Date());
+      await registrarConsultaClima(db, { clima, origen: 'chatbot_clima' });
       const detalle = clima.fuenteClima === 'api'
         ? `ahorita hay aproximadamente ${Math.round(clima.temperaturaC)}°C, ${clima.probabilidadLluvia}% de probabilidad de lluvia y viento de ${Math.round(clima.vientoKmh)} km/h en la cima`
         : `estamos en temporada ${clima.temporada}, con clima típico de ~${clima.temperaturaC}°C en la parte alta`;
@@ -422,6 +425,7 @@ async function generarRespuestaRespaldo(db, { pregunta, contexto }) {
     case 'equipo': {
       clima = await obtenerPronosticoClima(new Date().toISOString());
       if (!clima) clima = climaEstacionalDeRespaldo(new Date());
+      await registrarConsultaClima(db, { clima, origen: 'chatbot_equipo' });
       const recomendaciones = generarRecomendacionesEquipo({ horaSalida: '06:00', clima });
       return `Para tu recorrido te recomiendo llevar: ${recomendaciones.slice(0, 5).join('; ')}.`;
     }
@@ -456,6 +460,7 @@ async function responderChat(db, { pregunta, contexto, historial }) {
 
   if (!process.env.GEMINI_API_KEY) {
     const respaldo = await generarRespuestaRespaldo(db, { pregunta, contexto });
+    await registrarConversacion(db, { pregunta, respuesta: respaldo, contexto, generadoConIA: false });
     return { respuesta: respaldo, generadoConIA: false };
   }
 
@@ -480,9 +485,11 @@ async function responderChat(db, { pregunta, contexto, historial }) {
     // Gemini fallo incluso despues de los reintentos: en vez de un
     // mensaje de error, se usa el respaldo con ML (ver mas arriba).
     const respaldo = await generarRespuestaRespaldo(db, { pregunta, contexto });
+    await registrarConversacion(db, { pregunta, respuesta: respaldo, contexto, generadoConIA: false });
     return { respuesta: respaldo, generadoConIA: false };
   }
 
+  await registrarConversacion(db, { pregunta, respuesta: respuestaTexto, contexto, generadoConIA: true });
   return { respuesta: respuestaTexto, generadoConIA: true };
 }
 
@@ -499,6 +506,11 @@ async function generarSugerenciaCompleta(db, { horaSalida, fecha, personasGrupo 
   if (!clima) {
     clima = climaEstacionalDeRespaldo(fechaBase);
   }
+  await registrarConsultaClima(db, {
+    clima,
+    fechaConsultadaISO: fechaHoraSalida.toISOString(),
+    origen: 'recomendaciones',
+  });
 
   const recomendaciones = generarRecomendacionesEquipo({ horaSalida, clima });
   const estadisticaHistorica = await calcularEstadisticasHistoricas(db, horaSalida);
