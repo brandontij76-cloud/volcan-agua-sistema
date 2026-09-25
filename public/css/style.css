@@ -105,6 +105,20 @@ a:hover { color: var(--ambar); }
 .navbar-toggler { border-color: var(--border-soft) !important; }
 .navbar-toggler-icon { filter: var(--navbar-icon-filter); }
 
+/* El boton de "Iniciar sesion" se centra en toda la barra (no solo en el
+   espacio libre a la derecha del logo) para que se note mas, en vez de
+   quedar chiquito en la esquina. Solo aplica en pantallas grandes: en
+   celular el menu se abre como bloque normal (hamburguesa) y no debe ir
+   posicionado de forma absoluta, o se encima con el resto. */
+@media (min-width: 992px) {
+  .navbar-volcan #navMenu {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* ---------- Botones ---------- */
 .btn-volcan {
   background: linear-gradient(135deg, var(--teal-fuerte), var(--teal));

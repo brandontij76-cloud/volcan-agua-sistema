@@ -73,6 +73,16 @@ const INTENTS_POR_DEFECTO = {
       'el botón de emergencia, o cómo usar el sistema — intenta reformular tu pregunta sobre alguno de esos temas.',
     activo: true,
   },
+  fuera_de_tema: {
+    nombreIntent: 'Pregunta no relacionada con Cumbre Segura',
+    palabrasClave: [],
+    respuestaBase:
+      'Esa pregunta no está relacionada con Cumbre Segura, así que no la puedo responder. ' +
+      'Solo puedo ayudarte con temas del Volcán de Agua: la ruta, el clima, qué equipo llevar, ' +
+      'el botón de emergencia, o cómo usar el sistema (registro, monitoreo, confirmar la cima). ' +
+      '¿Tienes alguna duda sobre eso?',
+    activo: true,
+  },
 };
 
 let cacheIntents = null;
@@ -80,7 +90,22 @@ let cacheIntents = null;
 async function inicializarIntentsChatbot(db) {
   const snapshot = await db.ref('intents_chatbot').once('value');
   if (snapshot.exists()) {
-    cacheIntents = snapshot.val();
+    const existentes = snapshot.val();
+    // Completa con cualquier categoria nueva que se haya agregado al
+    // codigo despues de que este nodo ya existiera en Firebase (por
+    // ejemplo, "fuera_de_tema"), sin pisar las respuestas que el
+    // administrador ya haya personalizado en las categorias existentes.
+    const faltantes = {};
+    Object.keys(INTENTS_POR_DEFECTO).forEach((categoria) => {
+      if (!existentes[categoria]) faltantes[categoria] = INTENTS_POR_DEFECTO[categoria];
+    });
+    if (Object.keys(faltantes).length > 0) {
+      await db.ref('intents_chatbot').update(faltantes);
+      cacheIntents = { ...existentes, ...faltantes };
+      console.log('[intents_chatbot] Se agregaron categorías nuevas:', Object.keys(faltantes).join(', '));
+    } else {
+      cacheIntents = existentes;
+    }
   } else {
     await db.ref('intents_chatbot').set(INTENTS_POR_DEFECTO);
     cacheIntents = INTENTS_POR_DEFECTO;

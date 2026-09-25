@@ -372,7 +372,11 @@ async function construirContextoAdmin(db) {
       `${sinAtender} alertas sin atender, ${cimasAlcanzadas} personas han confirmado llegar a la cima. ` +
       `El modelo de IA de riesgo esta ${modeloTexto}. ` +
       `Responde de forma breve y profesional, en español. Si preguntan algo que no esta en estos datos, ` +
-      `dilo con honestidad y ofrece explicar como funciona esa parte del sistema en general.`
+      `dilo con honestidad y ofrece explicar como funciona esa parte del sistema en general. IMPORTANTE: ` +
+      `solo respondes temas relacionados a Cumbre Segura y su operacion (excursionistas, alertas, colaboradores, ` +
+      `agencias, el modelo de IA de riesgo, configuracion del sistema). Si preguntan cualquier cosa sin relacion ` +
+      `(operaciones matematicas, cultura general, otros temas), NO la respondas: contesta unicamente que esa ` +
+      `pregunta no esta relacionada con el sistema y que solo puedes ayudar con temas de Cumbre Segura.`
     );
   } catch (error) {
     console.warn('[Asistente IA] No se pudo construir contexto de admin:', error.message);
@@ -392,7 +396,12 @@ function construirContextoUsuario() {
     `dificultad "${dificultad}". El sistema permite registrarse, compartir ubicacion GPS ` +
     `en tiempo real, presionar un boton de emergencia, confirmar la llegada a la cima, y finalizar el recorrido. ` +
     `Responde dudas sobre el recorrido, que llevar, seguridad, clima o el uso del sistema. Se breve, calido, ` +
-    `en español de Guatemala. Si preguntan algo fuera de este tema, redirige amablemente al tema del recorrido.`
+    `en español de Guatemala. IMPORTANTE: solo respondes temas relacionados al Volcan de Agua y al uso de ` +
+    `Cumbre Segura. Si preguntan cualquier otra cosa (operaciones matematicas, cultura general, chismes, ` +
+    `otros temas sin relacion), NO la respondas bajo ninguna circunstancia aunque parezca inofensiva: en vez ` +
+    `de eso, responde unicamente "Esa pregunta no está relacionada con Cumbre Segura, así que no la puedo ` +
+    `responder. Solo puedo ayudarte con temas del Volcán de Agua: la ruta, el clima, qué llevar, el botón de ` +
+    `emergencia, o cómo usar el sistema."`
   );
 }
 
@@ -456,6 +465,23 @@ async function generarRespuestaRespaldo(db, { pregunta, contexto }) {
 async function responderChat(db, { pregunta, contexto, historial }) {
   if (!pregunta || !pregunta.trim()) {
     return { respuesta: '¿En qué te puedo ayudar?', generadoConIA: false };
+  }
+
+  // Filtro de tema: si ninguna palabra de la pregunta coincide con el
+  // vocabulario que el clasificador Naive Bayes aprendio de los temas de
+  // Cumbre Segura (ruta, clima, equipo, emergencia, uso del sistema...),
+  // se responde directo que la pregunta no esta relacionada, SIN
+  // consultarle nada a Gemini. Esto es mas confiable que solo pedirle a
+  // Gemini "por favor no respondas cosas fuera de tema" en el prompt: un
+  // modelo de lenguaje general facilmente responde algo como "5+5" o
+  // preguntas de cultura general porque le parecen inofensivas, aunque
+  // se le haya pedido lo contrario. Aqui se corta antes, de forma
+  // determinista.
+  const { categoria: categoriaDetectada } = clasificarPregunta(pregunta);
+  if (categoriaDetectada === 'desconocido') {
+    const respuestaFueraDeTema = obtenerRespuestaBase('fuera_de_tema');
+    await registrarConversacion(db, { pregunta, respuesta: respuestaFueraDeTema, contexto, generadoConIA: false });
+    return { respuesta: respuestaFueraDeTema, generadoConIA: false };
   }
 
   if (!process.env.GEMINI_API_KEY) {
