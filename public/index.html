@@ -11,31 +11,26 @@
 <body>
 
   <nav class="navbar navbar-expand-lg navbar-volcan sticky-top">
-    <div class="container position-relative">
+    <div class="container">
       <a class="navbar-brand" href="index.html">Cumbre Segura</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navMenu">
-        <ul class="navbar-nav align-items-center gap-lg-2 my-2 my-lg-0">
-          <li class="nav-item dropdown">
-            <button class="btn btn-volcan dropdown-toggle" type="button" id="menuAcceso" data-bs-toggle="dropdown" aria-expanded="false">
-              Iniciar sesión
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="menuAcceso">
-              <li><a class="dropdown-item" href="registro.html"><span class="icono" data-icono="persona"></span> Excursionista</a></li>
-              <li><a class="dropdown-item" href="colaborador.html"><span class="icono" data-icono="grupo"></span> Colaborador</a></li>
-              <li><a class="dropdown-item" href="admin.html"><span class="icono" data-icono="herramientas"></span> Panel administrativo</a></li>
-            </ul>
-          </li>
-        </ul>
-      </div>
     </div>
   </nav>
 
   <header class="hero-volcan hero-volcan-foto">
     <div class="container">
       <span class="hero-eyebrow">Municipalidad de Santa María de Jesús</span>
+
+      <div class="dropdown d-flex justify-content-center my-3">
+        <button class="btn btn-volcan btn-lg dropdown-toggle" type="button" id="menuAcceso" data-bs-toggle="dropdown" aria-expanded="false">
+          Iniciar sesión
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="menuAcceso">
+          <li><a class="dropdown-item" href="registro.html"><span class="icono" data-icono="persona"></span> Excursionista</a></li>
+          <li><a class="dropdown-item" href="colaborador.html"><span class="icono" data-icono="grupo"></span> Colaborador</a></li>
+          <li><a class="dropdown-item" href="admin.html"><span class="icono" data-icono="herramientas"></span> Panel administrativo</a></li>
+        </ul>
+      </div>
+
       <h1>Tu aventura, nuestra prioridad.</h1>
       <p class="lead mx-auto">
         Monitoreo GPS en tiempo real, alertas automáticas y un botón de emergencia
