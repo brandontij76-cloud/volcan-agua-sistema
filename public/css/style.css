@@ -107,19 +107,19 @@ a:hover { color: var(--ambar); }
 
 /* ---------- Botones ---------- */
 .btn-volcan {
-  background: linear-gradient(135deg, var(--teal-fuerte), var(--teal));
-  border: none;
-  color: #06231f;
+  color: var(--teal);
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
   font-weight: 700;
-  border-radius: var(--radio-btn);
+  border-radius: 999px;
   padding: 0.75rem 1.5rem;
-  box-shadow: 0 8px 24px rgba(52, 211, 153, 0.25);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-.btn-volcan:hover {
-  color: #06231f;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(52, 211, 153, 0.35);
+.btn-volcan:hover,
+.btn-volcan:focus {
+  color: var(--teal);
+  background: rgba(52, 211, 153, 0.18);
+  transform: translateY(-1px);
 }
 .btn-volcan:active { transform: translateY(0); }
 
@@ -212,6 +212,28 @@ a:hover { color: var(--ambar); }
   padding: 0.35rem 0.9rem;
   border-radius: 999px;
   margin-bottom: 1.25rem;
+}
+
+/* Boton de "Iniciar sesion" del hero: mismo diseno de pastilla que el
+   distintivo de la Municipalidad de arriba (fondo transparente, borde
+   verde, texto verde), solo que un poco mas grande por ser un boton. */
+.btn-acceso-hero {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--teal);
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  padding: 0.6rem 1.6rem;
+  border-radius: 999px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btn-acceso-hero:hover,
+.btn-acceso-hero:focus {
+  color: var(--teal);
+  background: rgba(52, 211, 153, 0.18);
+  transform: translateY(-1px);
 }
 
 .hero-volcan h1 {
