@@ -617,6 +617,16 @@ a:hover { color: var(--ambar); }
   margin-top: 3rem;
 }
 
+/* En celular, el boton flotante del chatbot (fijo, abajo a la derecha)
+   puede quedar encima de las ultimas lineas del pie de pagina cuando se
+   hace scroll hasta el fondo. Se deja un espacio vacio extra abajo,
+   suficiente para que el boton nunca tape texto. */
+@media (max-width: 767px) {
+  .footer-volcan {
+    padding-bottom: 6rem;
+  }
+}
+
 .footer-firma {
   display: block;
   margin-top: 0.4rem;
