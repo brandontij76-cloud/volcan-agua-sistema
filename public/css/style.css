@@ -626,6 +626,17 @@ a:hover { color: var(--ambar); }
   letter-spacing: 0.02em;
 }
 
+.footer-dedicatoria {
+  display: block;
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-soft);
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--teal);
+  opacity: 0.85;
+}
+
 /* ---------- Ficha de ruta (estilo Wikiloc/AllTrails) ---------- */
 .ficha-ruta-metrica-label {
   color: var(--texto-tenue);
